@@ -1,0 +1,18 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/public/home/st17341163/multicore-hw1-scaffold/sources/src/samples.cpp
+samples.h
+/public/home/st17341163/multicore-hw1-scaffold/sources/src/samples.h
+
+/public/home/st17341163/multicore-hw1-scaffold/sources/src/samples.h
+stdio.h
+-
+stdlib.h
+-
+
