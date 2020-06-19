@@ -1,8 +1,85 @@
 #include <cuda_runtime.h>
 #include "core.h"
-#define VERSION 7
+#define VERSION 8
 
-#if VERSION == 7
+#if VERSION == 8
+
+texture<float, 2> input_tex;
+
+__global__ void cudaCallbackKernel(
+    const int width,
+    const int height,
+    const float *__restrict__ input,
+    float *__restrict__ output)
+{
+    const int idy = blockIdx.y * blockDim.y + threadIdx.y;
+    const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    signed char cnt[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    for (signed char offsety = -2; offsety <= 2; ++offsety)
+    {
+        const int py = idy + offsety;
+        if (0 <= py && py < height)
+            for (signed char offsetx = -2; offsetx <= 2; ++offsetx)
+            {
+                const int px = idx + offsetx;
+                if (0 <= px && px < width)
+                    ++cnt[(signed char)tex2D(input_tex, px, py)];
+            }
+    }
+    double ans = 0.0;
+    for (signed char i = 0; i < 16; ++i)
+        if (cnt[i])
+            ans += -0.04F * cnt[i] * log(0.04F * cnt[i]);
+    if (idy < height && idx < width)
+        output[idy * width + idx] = ans;
+}
+
+void cudaCallback(
+    int width,
+    int height,
+    float *sample,
+    float **result)
+{
+    float *input_d, *output_d;
+
+    CHECK(cudaMalloc((void **)&input_d, sizeof(float) * width * height));
+    CHECK(cudaMalloc((void **)&output_d, sizeof(float) * width * height));
+    CHECK(cudaMemcpy(input_d, sample, sizeof(float) * width * height, cudaMemcpyHostToDevice));
+
+    CHECK(cudaBindTexture2D(
+        0,
+        &input_tex,
+        input_d,
+        &input_tex.channelDesc,
+        width,
+        height,
+        width * sizeof(float)));
+
+    const int
+        BLOCK_DIM_X = 32,
+        BLOCK_DIM_Y = 32;
+
+    const dim3
+        blockDim(BLOCK_DIM_X, BLOCK_DIM_Y),
+        gridDim(divup(width, BLOCK_DIM_X), divup(height, BLOCK_DIM_Y));
+
+    cudaCallbackKernel<<<
+        gridDim,
+        blockDim>>>(
+        width,
+        height,
+        input_d,
+        output_d);
+
+    CHECK(cudaUnbindTexture(input_tex));
+
+    *result = (float *)malloc(sizeof(float) * width * height);
+    CHECK(cudaMemcpy(*result, output_d, sizeof(float) * width * height, cudaMemcpyDeviceToHost));
+    CHECK(cudaFree(input_d));
+    CHECK(cudaFree(output_d));
+}
+
+#elif VERSION == 7
 
 __global__ void cudaCallbackKernel(
     const int width,
