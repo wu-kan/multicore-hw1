@@ -1,8 +1,79 @@
 #include <cuda_runtime.h>
 #include "core.h"
-#define VERSION 8
+#define VERSION 9
 
-#if VERSION == 8
+#if VERSION == 9
+
+template <
+    int BLOCK_DIM_X,
+    int BLOCK_DIM_Y>
+__global__ void cudaCallbackKernel(
+    const int width,
+    const int height,
+    const float *__restrict__ input,
+    float *__restrict__ output)
+{
+    const int idy = blockIdx.y * (BLOCK_DIM_Y - 4) + threadIdx.y - 2;
+    const int idx = blockIdx.x * (BLOCK_DIM_X - 4) + threadIdx.x - 2;
+    __shared__ int input_s[BLOCK_DIM_Y][BLOCK_DIM_X | 1];
+
+    input_s[threadIdx.y][threadIdx.x] = 0 <= idy && idy < height && 0 <= idx && idx < width ? input[idy * width + idx] : 16;
+
+    __syncthreads();
+
+    if (1 < threadIdx.y && threadIdx.y < BLOCK_DIM_Y - 2 &&
+        1 < threadIdx.x && threadIdx.x < BLOCK_DIM_X - 2 &&
+        idy < height && idx < width)
+    {
+        signed char cnt[17] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+        for (signed char offsety = -2; offsety <= 2; ++offsety)
+            for (signed char offsetx = -2; offsetx <= 2; ++offsetx)
+                ++cnt[input_s[threadIdx.y + offsety][threadIdx.x + offsetx]];
+        double ans = 0.0;
+        for (signed char i = 0; i < 16; ++i)
+            if (cnt[i])
+                ans += -0.04F * cnt[i] * log(0.04F * cnt[i]);
+        output[idy * width + idx] = ans;
+    }
+}
+
+void cudaCallback(
+    int width,
+    int height,
+    float *sample,
+    float **result)
+{
+    float *input_d, *output_d;
+
+    CHECK(cudaMalloc((void **)&input_d, sizeof(float) * width * height));
+    CHECK(cudaMalloc((void **)&output_d, sizeof(float) * width * height));
+    CHECK(cudaMemcpy(input_d, sample, sizeof(float) * width * height, cudaMemcpyHostToDevice));
+
+    const int
+        BLOCK_DIM_X = 32,
+        BLOCK_DIM_Y = 32;
+
+    const dim3
+        blockDim(BLOCK_DIM_X, BLOCK_DIM_Y),
+        gridDim(divup(width, BLOCK_DIM_X - 4), divup(height, BLOCK_DIM_Y - 4));
+
+    cudaCallbackKernel<
+        BLOCK_DIM_X,
+        BLOCK_DIM_Y><<<
+        gridDim,
+        blockDim>>>(
+        width,
+        height,
+        input_d,
+        output_d);
+
+    *result = (float *)malloc(sizeof(float) * width * height);
+    CHECK(cudaMemcpy(*result, output_d, sizeof(float) * width * height, cudaMemcpyDeviceToHost));
+    CHECK(cudaFree(input_d));
+    CHECK(cudaFree(output_d));
+}
+
+#elif VERSION == 8
 
 texture<float, 2> input_tex;
 
