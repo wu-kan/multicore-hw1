@@ -894,6 +894,8 @@ namespace wk12
                 ans += plogp[sum[i][(idy + 5) * (width + 5) + idx + 5] - sum[i][(idy + 5) * (width + 5) + idx] - sum[i][idy * (width + 5) + idx + 5] + sum[i][idy * (width + 5) + idx]];
             (*result)[pos] = ans;
         }
+        for (int i = 0; i < 16; ++i)
+            free(sum[i]);
     }
 } // namespace wk12
 
