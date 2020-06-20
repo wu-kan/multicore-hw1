@@ -770,8 +770,65 @@ namespace wk10
             (*result)[pos] = ans;
         }
     }
-
 } // namespace wk10
+
+namespace wk11
+{
+    void cudaCallback(
+        int width,
+        int height,
+        float *sample,
+        float **result)
+    {
+        *result = (float *)malloc(sizeof(float) * width * height);
+#pragma omp parallel for
+        for (int pos = 0; pos < width * height; ++pos)
+        {
+            const int
+                idy = pos / width,
+                idx = pos - idy * width;
+            int cnt[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+            for (int offsety = -2; offsety <= 2; ++offsety)
+                for (int offsetx = -2; offsetx <= 2; ++offsetx)
+                {
+                    const int py = idy + offsety, px = idx + offsetx;
+                    if (0 <= py && py < height && 0 <= px && px < width)
+                        ++cnt[(int)sample[py * width + px]];
+                }
+            double ans = 0.0;
+            const double plogp[26] = {
+                -0.0,
+                -0.04 * log(0.04),
+                -0.08 * log(0.08),
+                -0.12 * log(0.12),
+                -0.16 * log(0.16),
+                -0.20 * log(0.20),
+                -0.24 * log(0.24),
+                -0.28 * log(0.28),
+                -0.32 * log(0.32),
+                -0.36 * log(0.36),
+                -0.40 * log(0.40),
+                -0.44 * log(0.44),
+                -0.48 * log(0.48),
+                -0.52 * log(0.52),
+                -0.56 * log(0.56),
+                -0.60 * log(0.60),
+                -0.64 * log(0.64),
+                -0.68 * log(0.68),
+                -0.72 * log(0.72),
+                -0.76 * log(0.76),
+                -0.80 * log(0.80),
+                -0.84 * log(0.84),
+                -0.88 * log(0.88),
+                -0.92 * log(0.92),
+                -0.96 * log(0.96),
+                -0.0};
+            for (int i = 0; i < 16; ++i)
+                ans += plogp[cnt[i]];
+            (*result)[pos] = ans;
+        }
+    }
+} // namespace wk11
 
 void cudaCallback(
     int width,
@@ -779,5 +836,5 @@ void cudaCallback(
     float *sample,
     float **result)
 {
-    return wk10::cudaCallback(width, height, sample, result);
+    return wk11::cudaCallback(width, height, sample, result);
 }
