@@ -49,7 +49,7 @@ endif()
 
 
 
-set(CMAKE_CXX_IMPLICIT_LINK_LIBRARIES "stdc++;m;c")
+set(CMAKE_CXX_IMPLICIT_LINK_LIBRARIES "stdc++;m;gomp;pthread;c")
 set(CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES "/usr/lib/gcc/x86_64-redhat-linux/4.8.5;/usr/lib64;/lib64;/public/software/compiler/intel/intel-compiler-2017.5.239/compiler/lib/intel64;/public/software/compiler/intel/intel-compiler-2017.5.239/mkl/lib/intel64;/public/software/compiler/intel/intel-compiler-2017.5.239/tbb/lib/intel64;/usr/lib")
 set(CMAKE_CXX_IMPLICIT_LINK_FRAMEWORK_DIRECTORIES "")
 

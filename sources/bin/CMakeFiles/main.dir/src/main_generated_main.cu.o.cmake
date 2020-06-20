@@ -70,7 +70,7 @@ set(generated_file_internal "/public/home/st17341163/multicore-hw1-scaffold/sour
 set(generated_cubin_file_internal "/public/home/st17341163/multicore-hw1-scaffold/sources/bin/CMakeFiles/main.dir/src/./main_generated_main.cu.o.cubin.txt") # path
 
 set(CUDA_NVCC_EXECUTABLE "/public/software/cuda10.0/bin/nvcc") # path
-set(CUDA_NVCC_FLAGS -O3 ;; ) # list
+set(CUDA_NVCC_FLAGS -O3 -Xcompiler -fopenmp ;; ) # list
 # Build specific configuration flags
 set(CUDA_NVCC_FLAGS_DEBUG  ; )
 set(CUDA_NVCC_FLAGS_MINSIZEREL  ; )
@@ -86,7 +86,7 @@ endif()
 
 # This is the list of host compilation flags.  It C or CXX should already have
 # been chosen by FindCUDA.cmake.
-set(CMAKE_HOST_FLAGS -O3 )
+set(CMAKE_HOST_FLAGS -O3 -fopenmp )
 set(CMAKE_HOST_FLAGS_DEBUG -g)
 set(CMAKE_HOST_FLAGS_MINSIZEREL -Os -DNDEBUG)
 set(CMAKE_HOST_FLAGS_RELEASE -O3 -DNDEBUG)

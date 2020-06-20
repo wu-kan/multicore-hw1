@@ -2,9 +2,10 @@
 #define _INCL_CORE
 
 #include <stdio.h>
-
-// kernel is an element-wise kernel function for demonstrating purpose only.
-extern __global__ void kernel(int size, float *input, float *output);
+#include <stdlib.h>
+#include <math.h>
+#include <cuda_runtime.h>
+#include <omp.h>
 
 /*
  * In general, you don't need to modify the lines below to finish hw1.
@@ -21,15 +22,16 @@ extern void cudaCallback(int width, int height, float *sample, float **result);
 extern int divup(int n, int m);
 
 // CHECK macro from Grossman and McKercher, "Professional CUDA C Programming"
-#define CHECK(call)                                         \
-{                                                           \
-    const cudaError_t error = call;                         \
-    if (error != cudaSuccess) {                             \
-        printf("Error: %s:%d, ", __FILE__, __LINE__);       \
-        printf("code:%d, reason: %s \n",                    \
-                error, cudaGetErrorString(error));          \
-        exit(1);                                            \
-    }                                                       \
-}                                                           \
+#define CHECK(call)                                       \
+    {                                                     \
+        const cudaError_t error = call;                   \
+        if (error != cudaSuccess)                         \
+        {                                                 \
+            printf("Error: %s:%d, ", __FILE__, __LINE__); \
+            printf("code:%d, reason: %s \n",              \
+                   error, cudaGetErrorString(error));     \
+            exit(1);                                      \
+        }                                                 \
+    }
 
 #endif

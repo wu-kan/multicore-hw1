@@ -28,7 +28,7 @@ CMAKE_COLOR_MAKEFILE:BOOL=ON
 CMAKE_CXX_COMPILER:FILEPATH=/bin/c++
 
 //Flags used by the compiler during all build types.
-CMAKE_CXX_FLAGS:STRING=-O3
+CMAKE_CXX_FLAGS:STRING=-O3 -fopenmp
 
 //Flags used by the compiler during debug builds.
 CMAKE_CXX_FLAGS_DEBUG:STRING=-g
@@ -48,7 +48,7 @@ CMAKE_CXX_FLAGS_RELWITHDEBINFO:STRING=-O2 -g -DNDEBUG
 CMAKE_C_COMPILER:FILEPATH=/bin/cc
 
 //Flags used by the compiler during all build types.
-CMAKE_C_FLAGS:STRING=-O3
+CMAKE_C_FLAGS:STRING=-O3 -fopenmp
 
 //Flags used by the compiler during debug builds.
 CMAKE_C_FLAGS_DEBUG:STRING=-g
@@ -203,7 +203,7 @@ CUDA_HOST_COMPILER:FILEPATH=/bin/cc
 CUDA_NVCC_EXECUTABLE:FILEPATH=/public/software/cuda10.0/bin/nvcc
 
 //Semi-colon delimit multiple arguments.
-CUDA_NVCC_FLAGS:STRING=-O3
+CUDA_NVCC_FLAGS:STRING=-O3 -Xcompiler -fopenmp
 
 //Semi-colon delimit multiple arguments.
 CUDA_NVCC_FLAGS_DEBUG:STRING=
