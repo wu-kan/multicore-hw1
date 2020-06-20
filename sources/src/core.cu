@@ -739,7 +739,6 @@ namespace wk9
         CHECK(cudaFree(output_d));
     }
 } // namespace wk9
-
 namespace wk10
 {
     void cudaCallback(
@@ -771,7 +770,6 @@ namespace wk10
         }
     }
 } // namespace wk10
-
 namespace wk11
 {
     void cudaCallback(
@@ -829,6 +827,75 @@ namespace wk11
         }
     }
 } // namespace wk11
+namespace wk12
+{
+    void cudaCallback(
+        int width,
+        int height,
+        float *sample,
+        float **result)
+    {
+        *result = (float *)malloc(sizeof(float) * width * height);
+        int *sum[16];
+#pragma omp parallel for
+        for (int i = 0; i < 16; ++i)
+        {
+            int *p = (int *)malloc(sizeof(int) * (width + 5) * (height + 5));
+            for (int pos = 0; pos < (width + 5) * (height + 5); ++pos)
+            {
+                const int idy = pos / (width + 5), idx = pos - idy * (width + 5);
+                if (idy && idx)
+                {
+                    p[pos] = p[(idy - 1) * (width + 5) + idx] + p[idy * (width + 5) + idx - 1] - p[(idy - 1) * (width + 5) + (idx - 1)];
+                    const int py = idy - 3, px = idx - 3;
+                    if (0 <= py && py < height && 0 <= px && px < width && i == sample[py * width + px])
+                        ++p[pos];
+                }
+                else
+                    p[pos] = 0;
+            }
+            sum[i] = p;
+        }
+#pragma omp parallel for
+        for (int pos = 0; pos < width * height; ++pos)
+        {
+            const int
+                idy = pos / width,
+                idx = pos - idy * width;
+            double ans = 0.0;
+            const double plogp[26] = {
+                -0.0,
+                -0.04 * log(0.04),
+                -0.08 * log(0.08),
+                -0.12 * log(0.12),
+                -0.16 * log(0.16),
+                -0.20 * log(0.20),
+                -0.24 * log(0.24),
+                -0.28 * log(0.28),
+                -0.32 * log(0.32),
+                -0.36 * log(0.36),
+                -0.40 * log(0.40),
+                -0.44 * log(0.44),
+                -0.48 * log(0.48),
+                -0.52 * log(0.52),
+                -0.56 * log(0.56),
+                -0.60 * log(0.60),
+                -0.64 * log(0.64),
+                -0.68 * log(0.68),
+                -0.72 * log(0.72),
+                -0.76 * log(0.76),
+                -0.80 * log(0.80),
+                -0.84 * log(0.84),
+                -0.88 * log(0.88),
+                -0.92 * log(0.92),
+                -0.96 * log(0.96),
+                -0.0};
+            for (int i = 0; i < 16; ++i)
+                ans += plogp[sum[i][(idy + 5) * (width + 5) + idx + 5] - sum[i][(idy + 5) * (width + 5) + idx] - sum[i][idy * (width + 5) + idx + 5] + sum[i][idy * (width + 5) + idx]];
+            (*result)[pos] = ans;
+        }
+    }
+} // namespace wk12
 
 void cudaCallback(
     int width,
@@ -836,5 +903,5 @@ void cudaCallback(
     float *sample,
     float **result)
 {
-    return wk11::cudaCallback(width, height, sample, result);
+    return wk12::cudaCallback(width, height, sample, result);
 }
