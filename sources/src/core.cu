@@ -1,6 +1,6 @@
 #include "core.h"
 
-namespace wk0
+namespace v0
 {
     __global__ void cudaCallbackKernel(
         const int width,
@@ -63,8 +63,8 @@ namespace wk0
         CHECK(cudaFree(input_d));
         CHECK(cudaFree(output_d));
     }
-} // namespace wk0
-namespace wk1
+} // namespace v0
+namespace v1
 {
     __global__ void cudaCallbackKernel(
         const int width,
@@ -153,8 +153,8 @@ namespace wk1
         CHECK(cudaFree(input_d));
         CHECK(cudaFree(output_d));
     }
-} // namespace wk1
-namespace wk2
+} // namespace v1
+namespace v2
 {
     __global__ void cudaCallbackKernel(
         const int width,
@@ -220,8 +220,8 @@ namespace wk2
         CHECK(cudaFree(input_d));
         CHECK(cudaFree(output_d));
     }
-} // namespace wk2
-namespace wk3
+} // namespace v2
+namespace v3
 {
     __constant__ double plogp[26];
     struct InitPlogp
@@ -295,8 +295,8 @@ namespace wk3
         CHECK(cudaFree(input_d));
         CHECK(cudaFree(output_d));
     }
-} // namespace wk3
-namespace wk4
+} // namespace v3
+namespace v4
 {
     __device__ double plogp[26];
     struct InitPlogp
@@ -370,8 +370,8 @@ namespace wk4
         CHECK(cudaFree(input_d));
         CHECK(cudaFree(output_d));
     }
-} // namespace wk4
-namespace wk5
+} // namespace v4
+namespace v5
 {
     texture<float> plogp_tex;
     __device__ float plogp[26];
@@ -448,8 +448,8 @@ namespace wk5
         CHECK(cudaFree(input_d));
         CHECK(cudaFree(output_d));
     }
-} // namespace wk5
-namespace wk6
+} // namespace v5
+namespace v6
 {
     texture<float> plogp_tex;
     __device__ float plogp[26];
@@ -526,8 +526,8 @@ namespace wk6
         CHECK(cudaFree(input_d));
         CHECK(cudaFree(output_d));
     }
-} // namespace wk6
-namespace wk7
+} // namespace v6
+namespace v7
 {
     __global__ void cudaCallbackKernel(
         const int width,
@@ -590,8 +590,8 @@ namespace wk7
         CHECK(cudaFree(input_d));
         CHECK(cudaFree(output_d));
     }
-} // namespace wk7
-namespace wk8
+} // namespace v7
+namespace v8
 {
     texture<float, 2> input_tex;
 
@@ -667,8 +667,8 @@ namespace wk8
         CHECK(cudaFree(input_d));
         CHECK(cudaFree(output_d));
     }
-} // namespace wk8
-namespace wk9
+} // namespace v8
+namespace v9
 {
     template <
         int BLOCK_DIM_X,
@@ -738,8 +738,8 @@ namespace wk9
         CHECK(cudaFree(input_d));
         CHECK(cudaFree(output_d));
     }
-} // namespace wk9
-namespace wk10
+} // namespace v9
+namespace v10
 {
     void cudaCallback(
         int width,
@@ -769,8 +769,8 @@ namespace wk10
             (*result)[pos] = ans;
         }
     }
-} // namespace wk10
-namespace wk11
+} // namespace v10
+namespace v11
 {
     void cudaCallback(
         int width,
@@ -826,8 +826,8 @@ namespace wk11
             (*result)[pos] = ans;
         }
     }
-} // namespace wk11
-namespace wk12
+} // namespace v11
+namespace v12
 {
     void cudaCallback(
         int width,
@@ -897,13 +897,61 @@ namespace wk12
         for (int i = 0; i < 16; ++i)
             free(sum[i]);
     }
-} // namespace wk12
-
+} // namespace v12
+namespace v13
+{
+    void cudaCallback(
+        int width,
+        int height,
+        float *sample,
+        float **result)
+    {
+        int num_threads = 0;
+        cudaGetDeviceCount(&num_threads);
+        if (num_threads > height - 4)
+            num_threads = height - 4;
+        if (num_threads < 1 || width * height < 1e5)
+            return v11::cudaCallback(width, height, sample, result);
+        if (num_threads < 2)
+            return v9::cudaCallback(width, height, sample, result);
+        *result = (float *)malloc(sizeof(float) * width * height);
+#pragma omp parallel num_threads(num_threads)
+        {
+            int thread_num = omp_get_thread_num(),
+                thread_len = (height - 4) / num_threads,
+                thread_beg = thread_len * thread_num + 2;
+            if (thread_num == num_threads - 1)
+                thread_len = height - thread_beg - 2;
+            float *thread_result;
+            cudaSetDevice(thread_num);
+            v9::cudaCallback(
+                width,
+                thread_len + 4,
+                sample + width * (thread_beg - 2),
+                &thread_result);
+            memcpy(
+                result + width * thread_beg,
+                thread_result + width * 2,
+                sizeof(float) * thread_len);
+            if (thread_num == 0)
+                memcpy(
+                    result,
+                    thread_result,
+                    sizeof(float) * width * 2);
+            if (thread_num == num_threads - 1)
+                memcpy(
+                    result + width * (height - 2),
+                    thread_result + width * (thread_len - 2),
+                    sizeof(float) * width * 2);
+            free(thread_result);
+        }
+    }
+} // namespace v13
 void cudaCallback(
     int width,
     int height,
     float *sample,
     float **result)
 {
-    return wk12::cudaCallback(width, height, sample, result);
+    return v13::cudaCallback(width, height, sample, result);
 }
