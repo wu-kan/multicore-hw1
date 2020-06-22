@@ -1,22 +1,115 @@
-# Scaffold for hw1
+# multicore hw1 scaffold
 
-## What is it?
+| 学校     | 学院                 | 专业                         | 年级 | 学号     | 姓名 |
+| -------- | -------------------- | ---------------------------- | ---- | -------- | ---- |
+| 中山大学 | 数据科学与计算机学院 | 计算机科学与技术（超算方向） | 17   | 17341163 | 吴坎 |
 
-This is a scaffold for your hw1, including:
-- a bunch of sample data to test against;
-- the utilities to read-in the samples and write-out your results;
-- a full project structure with CMakeLists.txt for writing your CUDA program.
+## 实验简介
 
-More details can be found in the source code files.
+按照公式 $H(X)=-\sum_ip(X=x_i)\log p(X=x_i)$ 计算二维数组中以每个元素为中心的熵：
 
-## How to use it?
+- 输入二维数组及其大小
+  - 数组元素为 $[0,15]$ 的整型
+- 输出一个浮点型二维数组
+  - 输出精度保留到小数点后五位
+  - 每个元素值为输入数组中对应位置为中心大小为五的窗口中值的熵
+  - 边界窗口只考虑数组内的值
 
-You typically just need to modify `sources/src/core.h` and `sources/src/core.cu`. Currently, these two source code files contain a demonstrating example but the example has nothing to do with the requirements of hw1.
+实验中分别在 CUDA（单卡）、OPENMP、OPENMP+CUDA（四卡）三种计算环境上实现了上述实验要求，并实现了若干种优化版本进行对比。由于提供的最大的样例输入大小只有 $2560\times 2560$ 这一数量级，并没有完全发挥多核计算环境的优势，我也随机构造了一组 $40000\times 40000$ 大小的输入对程序进行了测试。最终在实验结果的基础上总结得到了一些影响 CUDA、OPENMP 程序性能的因素。
 
-When you are about to hand-in your solutions to hw1, make sure
-- this README file has been replaced by your experiment report (the report doesn't need to be a Markdown file and besides, you are always suggested to include a PDF version of your report);
-- your results against the sample data have been put in the `results` folder;
-- the sample data file `data.bin` has been removed;
-- the folder name has been changed to `{your name}-{your ID}` (curly brackets are not needed).
+## 实验原理
 
-And finally, compress the whole folder as a `.zip` file or a `.7z` file, and send it to multicoresysu2020@163.com before 2020.07.05 23:59.
+我分别在 CUDA 上实现了 v0~v9 版本、OPENMP 上实现了 v10~v12 版本、OPENMP+CUDA 实现了 v13 版本。不同版本使用 namespace 进行封装，除了 v13 版本复用了 v9、v11 版本之外，各命名空间互不干扰，没有冲突。这样做既方便了代码复用，也方便横向对比各个版本之间的性能差异。
+
+```cpp
+void cudaCallback(
+    int width,
+    int height,
+    float *sample,
+    float **result)
+{
+    v13::cudaCallback(width, height, sample, result);
+}
+```
+
+如上，如果要在它们之间进行切换，只需要修改 `sources/src/core.cu` 最后几行 `cudaCallback` 函数中实际调用的版本即可。
+
+### CUDA（单卡）
+
+首先我实现了 baseline 版本（v0），将线程一一映射到对应位置上，每个线程计算一个位置的熵值。每个线程块在逻辑上没有额外的任务。
+
+由于我们的窗口大小仅为 25，因此在公式 $H(X)=-\sum_ip(X=x_i)\log p(X=x_i)$ 中，$p(X=x_i)\in\{\frac{0}{25},\frac{01}{25},\ldots,\frac{25}{25}\}$，实际的对数运算范围是有限的，我们可以使用查表来优化这一过程。我针对 $p\in\{\frac{0}{25},\frac{01}{25},\ldots,\frac{25}{25}\}$ 预计算了 $p\log p$ 表（$p=0$ 时值为 0）。
+
+$p\log p$ 表建好了，可是应该存在哪里呢？我依次考虑了如下几种情况：
+
+1. 直接存在 register（v1）
+   - 通过检查编译生成的 `.ptx` 汇编文件，可以发现其值在编译时就已经计算完成
+   - 但是发现相对于 baseline 没有明显变化
+   - 猜测每个线程都保存大小为 26 的表增加了单个线程的寄存器压力，降低了能够同时运行的线程数量
+2. 存在 shared memory（v2）
+   - 使用 shared memory，在同一个线程块之内共享这张表
+   - 相对于 baseline 没有明显变化
+   - 猜测原因是，需要在运行时由对应位置的线程计算，超出部分的线程空转
+3. 存在 constant memory（v3）
+   - 由于 $p\log p$ 是常数表，很自然地想到为此而生的 constant memory
+   - 对 constant memory 的单次读操作可以广播到同个半线程束的其他$15$个线程，这种方式产生的内存流量只是使用全局内存时的$\frac{1}{16}$
+   - 硬件将主动把 constant memory 缓存在 GPU 上。在第一次从常量内存的某个地址上读取后，当其他半线程束请求同一个地址时，那么将命中缓存，这同样减少了额外的内存流量
+   - 相对于 baseline 没有明显变化
+   - 我猜测原因是，对于相邻的两个线程，他们特定元素需要访问的概率并不一定相同，因此很难命中 constant memory 的缓存
+4. 存在 device memory（v4）
+   - 相对于 baseline 没有明显变化
+   - 显然就读取速度来看 device memory（此处指 global memory）肯定不会快于 constant memory
+   - 但是这个版本可以为下一版本做铺垫
+5. 存在 texure memory（v5）
+   - 直接将 v4 版本中的 device memory 绑定 texure 进行访问
+   - texure memory 不需要满足 global memory 的合并访问条件也可以优化邻域上的数据读取
+   - CUDA 还有一种 surface memory，相当于带写操作的 texure memory，这里不再尝试了
+   - 相对于 baseline，在 $2560\times 2560$ 规模的输入上平均提高了大约 16% 的性能。
+   - 我猜测原因是，由于这个表大小仅为 26，访问 texure memory 时很容易就把表的其他值传给了附近的线程，从而减少了内存流量，也没有带来过大的寄存器压力（因为不是所有线程都获得了整个表）。
+
+到了 v5 版本终于有了一点提升，但是 v5 版本有一个缺点：texure memory 仅支持绑定 `float`（或 `int`）这种四个字节大小的类型。在 v0~v4 版本中，为了保证计算时答案的精度，我都是使用了混合精度的计算方式，即以 `double` 作为运算的类型，最后保存结果时再降成 `float` 型。虽然 `float` 类型本身有 7 位有效数字，但是如果作为计算的中间类型还是会给结果带来一定的舍入误差，就我在测试数据上的结果来看会和之前的结果产生十万分之一的误差，不能满足要求的小数点后五位。当然，我也可以使用 texure 读入两个四字节变量再用强制类型转换将其合成一个 double，但是这样又会增加类型转换的开销，一来一去就得不偿失了；此外，我也尝试将 v0~v4 的中间类型改成`float`，结果并没有提升，这说明不是由于换了中间类型导致的加速。
+
+虽然 v5 版本存在一定误差，但是为我 v6 版本的优化提供了新的思路：猜测使用的寄存器类型可能会对运行时间有影响。注意到之前的版本，我统计每个数出现次数的计数器类型是四字节大小的 `int` ，我将其换成了单字节的 `signed char`（因为出现次数最多 25，signed char 有效范围是-128~127 完全足够了）。结果效果非常明显：核函数的运行时间减少了一倍还多！这说明之前寄存器的压力确实特别大。
+
+那么在 v6 版本降低了寄存器的压力之后，v1~v5 版本预处理 $p\log p$ 的策略是否会有效果呢？经过实验发现还是没有明显效果，甚至于使用 texure memory 也不再有效果。这说明显卡上单个线程计算的速度是要远快于访问内存的速度的，此时这个程序的瓶颈不再在计算 $\log$ 函数上了（一组线程在访存时可以挂起，切换到其他已经访存完毕开始计算的线程上）。于是得到了不预处理 $p\log p$ 的版本 v7，解决了 v5 版本的误差问题。
+
+至此关于 $\log$ 函数的优化方式已经全部完毕（或者说都没有效果）。分析一下当前的程序，对于输入的数组需要读 25 次，然后计算后将结果写（1 次）到输出数组上。由于将答案写到输出数组上的过程显然是必要的，接下来考虑对输入数组读取的过程进行优化。
+
+首先是和 v5 版本一样，尝试使用 texure memory 进行优化，得到版本 v8。然而并没有效果，这是显然的：因为对输入数组的访问都是合并访存，texure memory 在这种情况下并不能提供加速（因为本身已经很快了）。
+
+然后考虑用 shared memory 进行读入部分的优化，得到版本 v9。在这个版本里，单个线程块的大小为 $32\times 32$，每次计算 $28\times 28$ 大小的矩阵（边界宽度为 2 的环的熵并非最后答案的熵）。虽然访存流量已经几乎减少到原来的二十五分之一，但是在 $2560\times 2560$ 规模上仍然没有提升！这是为什么呢？实际上，根据我在[nvidia 官网上的数据](https://www.nvidia.cn/data-center/v100/)，实验使用的显卡 tesla-v100 带宽高达 900GB /S，而 $2560\times 2560$ 大小的矩阵只有 26.2144MB，理论上只需要不到 0.03ms 就可以完全读入（实际上会有差距，因为不是单次读入），因此输入数据完全没跑满显卡的带宽。于是我在后续的实验中也构造了大小为 $40000\times 40000$ 的输入对程序性能进行测试，可以看到此版本有最优的渐进表现！
+
+此处每个版本仅包含一个 `cudaCallback` 函数和对应的 `cudaCallbackKernel` 核函数。
+
+### OPENMP
+
+OPENMP 版本与 CUDA 版本稍微不同。一方面，CPU 相对于 GPU 有更大的 $\frac{T_{计算}}{T_{访存}}$ 比，因此内存的访问不再是瓶颈；另一方面，CPU 能够同时调度的线程数（核数）远小于 GPU，但是单个线程有更多的寄存器和更长的流水线。因此 OPENMP 版本代码中优化策略的选择和效果与 CUDA 版本有区别。
+
+首先，我使用和 CUDA baseline 同样的算法实现了 OPENMP 版本的 baseline（v10），每次循环迭代计算一个位置的熵值。
+
+随后，我预处理了大小为 26 的 $p\log p$ 表，使用查表加速了计算过程（v11）。
+
+最后，我也针对 OPENMP 重新设计了一个算法（v12）：针对 $x=X_i,i\in[0,15]$ 分别线性预处理 16 个二维前缀和：$S_{a,b}=\sum_{p=0}^a\sum_{q=0}^b[x_{p,q}==X_i]$，这样要检索一个 $5\times 5$ 的窗口中特定元素的出现次数只需要四次访存即可：$S_{a+5,b+5}-S_{a+5,b}-S_{a,b+5}+S_{a,b}$。当然，由于本问题中变量的值域有 16 个元素，实际上总的访存次数 $16\times 4=64$ 是要超过 baseline 版本的 25 次的。但是，当问题的窗口变得更大（例如 $9\times 9$），或是变量的值域变小的时候，此算法因为有更低的时间复杂度而值得期待。
+
+此处每个版本仅包含一个 `cudaCallback` 函数。
+
+### OPENMP+CUDA（四卡）
+
+由于提供的实验环境中有四张显卡，只使用其中的一张显卡未免过于浪费，于是考虑使用多张显卡对程序进行加速。
+
+对于这个程序来说，要使用多张显卡对程序进行加速，我有大致如下两个思路：
+
+1. 任务并行，每张显卡负责计算不同的 $x=X_i$ 对于答案的贡献，然后使用多卡上的 Reduce 算法将其汇总
+2. 数据并行，每张显卡计算答案的一个部分
+
+我选择使用第二个思路（v13），从而可以直接复用之前单卡的版本，只需要特殊处理一下边界即可。我按照 height 将输入划分成四个子问题，随后将其传给单卡版本（v9）。这样划分的好处是无需对输入数据重新打包，只需要相对于初始地址计算不同的偏移量。
+
+同时，为了避免在小数据上使用多卡带来过大的并行开销，这个多卡版本在小数据时会直接调用 OPENMP 版本（v11）。得益于对之前单卡版本和 OPENMP 版本的代码复用，多卡版本只用了非常少的代码（50 行以内）就完成了数据并行，还是非常划算的。
+
+此处仅包含一个 `cudaCallback` 函数。
+
+## 实验环境
+
+## 实验结果
+
+## 实验总结

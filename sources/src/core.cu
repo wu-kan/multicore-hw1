@@ -953,5 +953,5 @@ void cudaCallback(
     float *sample,
     float **result)
 {
-    return v13::cudaCallback(width, height, sample, result);
+    v13::cudaCallback(width, height, sample, result);
 }
