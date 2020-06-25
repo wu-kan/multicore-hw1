@@ -1,6 +1,29 @@
 #include "core.h"
 
-namespace v0
+__forceinline__ __device__ __host__ int
+neighborhood_size(int x, int y, int width, int height)
+{
+    switch (min(min(x, width - x), 2) << 2 | min(min(y, height - y), 2))
+    {
+    case 0:
+        return 9;
+    case 1:
+    case 4:
+        return 12;
+    case 2:
+    case 8:
+        return 15;
+    case 5:
+        return 16;
+    case 6:
+    case 9:
+        return 20;
+    default:
+        return 25;
+    }
+}
+
+namespace v0 //cuda baseline
 {
     __global__ void cudaCallbackKernel(
         const int width,
@@ -10,24 +33,26 @@ namespace v0
     {
         const int idy = blockIdx.y * blockDim.y + threadIdx.y;
         const int idx = blockIdx.x * blockDim.x + threadIdx.x;
-        int cnt[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-        for (int offsety = -2; offsety <= 2; ++offsety)
-        {
-            const int py = idy + offsety;
-            if (0 <= py && py < height)
-                for (int offsetx = -2; offsetx <= 2; ++offsetx)
-                {
-                    const int px = idx + offsetx;
-                    if (0 <= px && px < width)
-                        ++cnt[(int)input[py * width + px]];
-                }
-        }
-        double ans = 0.0;
-        for (int i = 0; i < 16; ++i)
-            if (cnt[i])
-                ans += -0.04 * cnt[i] * log(0.04 * cnt[i]);
         if (idy < height && idx < width)
+        {
+            int cnt[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+            for (int offsety = -2; offsety <= 2; ++offsety)
+            {
+                const int py = idy + offsety;
+                if (0 <= py && py < height)
+                    for (int offsetx = -2; offsetx <= 2; ++offsetx)
+                    {
+                        const int px = idx + offsetx;
+                        if (0 <= px && px < width)
+                            ++cnt[(int)input[py * width + px]];
+                    }
+            }
+            double n = neighborhood_size(idx, idy, width, height), ans = log(n);
+            for (int i = 0; i < 16; ++i)
+                if (cnt[i])
+                    ans -= log((double)cnt[i]) * cnt[i] / n;
             output[idy * width + idx] = ans;
+        }
     }
 
     void cudaCallback(
@@ -64,7 +89,7 @@ namespace v0
         CHECK(cudaFree(output_d));
     }
 } // namespace v0
-namespace v1
+namespace v1 //cuda 预处理log到寄存器
 {
     __global__ void cudaCallbackKernel(
         const int width,
@@ -74,50 +99,54 @@ namespace v1
     {
         const int idy = blockIdx.y * blockDim.y + threadIdx.y;
         const int idx = blockIdx.x * blockDim.x + threadIdx.x;
-        int cnt[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-        for (int offsety = -2; offsety <= 2; ++offsety)
-        {
-            const int py = idy + offsety;
-            if (0 <= py && py < height)
-                for (int offsetx = -2; offsetx <= 2; ++offsetx)
-                {
-                    const int px = idx + offsetx;
-                    if (0 <= px && px < width)
-                        ++cnt[(int)input[py * width + px]];
-                }
-        }
-        double ans = 0.0;
-        const double plogp[26] = {
-            -0.0,
-            -0.04 * log(0.04),
-            -0.08 * log(0.08),
-            -0.12 * log(0.12),
-            -0.16 * log(0.16),
-            -0.20 * log(0.20),
-            -0.24 * log(0.24),
-            -0.28 * log(0.28),
-            -0.32 * log(0.32),
-            -0.36 * log(0.36),
-            -0.40 * log(0.40),
-            -0.44 * log(0.44),
-            -0.48 * log(0.48),
-            -0.52 * log(0.52),
-            -0.56 * log(0.56),
-            -0.60 * log(0.60),
-            -0.64 * log(0.64),
-            -0.68 * log(0.68),
-            -0.72 * log(0.72),
-            -0.76 * log(0.76),
-            -0.80 * log(0.80),
-            -0.84 * log(0.84),
-            -0.88 * log(0.88),
-            -0.92 * log(0.92),
-            -0.96 * log(0.96),
-            -0.0};
-        for (int i = 0; i < 16; ++i)
-            ans += plogp[cnt[i]];
         if (idy < height && idx < width)
+        {
+            int cnt[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+            for (int offsety = -2; offsety <= 2; ++offsety)
+            {
+                const int py = idy + offsety;
+                if (0 <= py && py < height)
+                    for (int offsetx = -2; offsetx <= 2; ++offsetx)
+                    {
+                        const int px = idx + offsetx;
+                        if (0 <= px && px < width)
+                            ++cnt[(int)input[py * width + px]];
+                    }
+            }
+            const double mylog[26] = {
+                0.0,
+                log(1.0),
+                log(2.0),
+                log(3.0),
+                log(4.0),
+                log(5.0),
+                log(6.0),
+                log(7.0),
+                log(8.0),
+                log(9.0),
+                log(10.0),
+                log(11.0),
+                log(12.0),
+                log(13.0),
+                log(14.0),
+                log(15.0),
+                log(16.0),
+                log(17.0),
+                log(18.0),
+                log(19.0),
+                log(20.0),
+                log(21.0),
+                log(22.0),
+                log(23.0),
+                log(24.0),
+                log(25.0)};
+
+            const int n = neighborhood_size(idx, idy, width, height);
+            double ans = mylog[n];
+            for (int i = 0; i < 16; ++i)
+                ans -= mylog[cnt[i]] * cnt[i] / n;
             output[idy * width + idx] = ans;
+        }
     }
 
     void cudaCallback(
@@ -154,7 +183,7 @@ namespace v1
         CHECK(cudaFree(output_d));
     }
 } // namespace v1
-namespace v2
+namespace v2 //cuda 预处理log到shared memory
 {
     __global__ void cudaCallbackKernel(
         const int width,
@@ -164,27 +193,31 @@ namespace v2
     {
         const int idy = blockIdx.y * blockDim.y + threadIdx.y;
         const int idx = blockIdx.x * blockDim.x + threadIdx.x;
-        int cnt[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-        for (int offsety = -2; offsety <= 2; ++offsety)
-        {
-            const int py = idy + offsety;
-            if (0 <= py && py < height)
-                for (int offsetx = -2; offsetx <= 2; ++offsetx)
-                {
-                    const int px = idx + offsetx;
-                    if (0 <= px && px < width)
-                        ++cnt[(int)input[py * width + px]];
-                }
-        }
-        double ans = 0.0;
-        __shared__ double plogp[26];
+
+        __shared__ double mylog[26];
         if (threadIdx.y == 0 && threadIdx.x < 26)
-            plogp[threadIdx.x] = threadIdx.x == 0 ? 0.0 : -0.04 * threadIdx.x * log(0.04 * threadIdx.x);
+            mylog[threadIdx.x] = threadIdx.x == 0 ? 0.0 : log((double)threadIdx.x);
         __syncthreads();
-        for (int i = 0; i < 16; ++i)
-            ans += plogp[cnt[i]];
         if (idy < height && idx < width)
+        {
+            int cnt[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+            for (int offsety = -2; offsety <= 2; ++offsety)
+            {
+                const int py = idy + offsety;
+                if (0 <= py && py < height)
+                    for (int offsetx = -2; offsetx <= 2; ++offsetx)
+                    {
+                        const int px = idx + offsetx;
+                        if (0 <= px && px < width)
+                            ++cnt[(int)input[py * width + px]];
+                    }
+            }
+            const int n = neighborhood_size(idx, idy, width, height);
+            double ans = mylog[n];
+            for (int i = 0; i < 16; ++i)
+                ans -= mylog[cnt[i]] * cnt[i] / n;
             output[idy * width + idx] = ans;
+        }
     }
 
     void cudaCallback(
@@ -221,17 +254,41 @@ namespace v2
         CHECK(cudaFree(output_d));
     }
 } // namespace v2
-namespace v3
+namespace v3 //cuda 预处理log到constant memory
 {
-    __constant__ double plogp[26];
+    __constant__ double mylog[26];
     struct InitPlogp
     {
         InitPlogp()
         {
-            double plogp_h[26] = {0.0};
-            for (char i = 1; i < 26; ++i)
-                plogp_h[i] = -0.04 * i * log(0.04 * i);
-            cudaMemcpyToSymbol(plogp, plogp_h, sizeof(float) * 26);
+            const double mylog_h[26] = {
+                0.0,
+                log(1.0),
+                log(2.0),
+                log(3.0),
+                log(4.0),
+                log(5.0),
+                log(6.0),
+                log(7.0),
+                log(8.0),
+                log(9.0),
+                log(10.0),
+                log(11.0),
+                log(12.0),
+                log(13.0),
+                log(14.0),
+                log(15.0),
+                log(16.0),
+                log(17.0),
+                log(18.0),
+                log(19.0),
+                log(20.0),
+                log(21.0),
+                log(22.0),
+                log(23.0),
+                log(24.0),
+                log(25.0)};
+            cudaMemcpyToSymbol(mylog, mylog_h, sizeof(double) * 26);
         }
     } tmpInit;
 
@@ -243,23 +300,26 @@ namespace v3
     {
         const int idy = blockIdx.y * blockDim.y + threadIdx.y;
         const int idx = blockIdx.x * blockDim.x + threadIdx.x;
-        int cnt[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-        for (int offsety = -2; offsety <= 2; ++offsety)
-        {
-            const int py = idy + offsety;
-            if (0 <= py && py < height)
-                for (int offsetx = -2; offsetx <= 2; ++offsetx)
-                {
-                    const int px = idx + offsetx;
-                    if (0 <= px && px < width)
-                        ++cnt[(int)input[py * width + px]];
-                }
-        }
-        double ans = 0.0;
-        for (int i = 0; i < 16; ++i)
-            ans += plogp[cnt[i]];
         if (idy < height && idx < width)
+        {
+            int cnt[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+            for (int offsety = -2; offsety <= 2; ++offsety)
+            {
+                const int py = idy + offsety;
+                if (0 <= py && py < height)
+                    for (int offsetx = -2; offsetx <= 2; ++offsetx)
+                    {
+                        const int px = idx + offsetx;
+                        if (0 <= px && px < width)
+                            ++cnt[(int)input[py * width + px]];
+                    }
+            }
+            const int n = neighborhood_size(idx, idy, width, height);
+            double ans = mylog[n];
+            for (int i = 0; i < 16; ++i)
+                ans -= mylog[cnt[i]] * cnt[i] / n;
             output[idy * width + idx] = ans;
+        }
     }
 
     void cudaCallback(
@@ -296,17 +356,41 @@ namespace v3
         CHECK(cudaFree(output_d));
     }
 } // namespace v3
-namespace v4
+namespace v4 //cuda 预处理log到device memory
 {
-    __device__ double plogp[26];
+    __device__ double mylog[26];
     struct InitPlogp
     {
         InitPlogp()
         {
-            double plogp_h[26] = {0.0};
-            for (char i = 1; i < 26; ++i)
-                plogp_h[i] = -0.04 * i * log(0.04 * i);
-            cudaMemcpyToSymbol(plogp, plogp_h, sizeof(float) * 26);
+            const double mylog_h[26] = {
+                0.0,
+                log(1.0),
+                log(2.0),
+                log(3.0),
+                log(4.0),
+                log(5.0),
+                log(6.0),
+                log(7.0),
+                log(8.0),
+                log(9.0),
+                log(10.0),
+                log(11.0),
+                log(12.0),
+                log(13.0),
+                log(14.0),
+                log(15.0),
+                log(16.0),
+                log(17.0),
+                log(18.0),
+                log(19.0),
+                log(20.0),
+                log(21.0),
+                log(22.0),
+                log(23.0),
+                log(24.0),
+                log(25.0)};
+            cudaMemcpyToSymbol(mylog, mylog_h, sizeof(double) * 26);
         }
     } tmpInit;
 
@@ -318,23 +402,26 @@ namespace v4
     {
         const int idy = blockIdx.y * blockDim.y + threadIdx.y;
         const int idx = blockIdx.x * blockDim.x + threadIdx.x;
-        int cnt[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-        for (int offsety = -2; offsety <= 2; ++offsety)
-        {
-            const int py = idy + offsety;
-            if (0 <= py && py < height)
-                for (int offsetx = -2; offsetx <= 2; ++offsetx)
-                {
-                    const int px = idx + offsetx;
-                    if (0 <= px && px < width)
-                        ++cnt[(int)input[py * width + px]];
-                }
-        }
-        double ans = 0.0;
-        for (int i = 0; i < 16; ++i)
-            ans += plogp[cnt[i]];
         if (idy < height && idx < width)
+        {
+            int cnt[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+            for (int offsety = -2; offsety <= 2; ++offsety)
+            {
+                const int py = idy + offsety;
+                if (0 <= py && py < height)
+                    for (int offsetx = -2; offsetx <= 2; ++offsetx)
+                    {
+                        const int px = idx + offsetx;
+                        if (0 <= px && px < width)
+                            ++cnt[(int)input[py * width + px]];
+                    }
+            }
+            const int n = neighborhood_size(idx, idy, width, height);
+            double ans = mylog[n];
+            for (int i = 0; i < 16; ++i)
+                ans -= mylog[cnt[i]] * cnt[i] / n;
             output[idy * width + idx] = ans;
+        }
     }
 
     void cudaCallback(
@@ -371,20 +458,45 @@ namespace v4
         CHECK(cudaFree(output_d));
     }
 } // namespace v4
-namespace v5
+namespace v5 //cuda 预处理log到texure memory
 {
-    texture<float> plogp_tex;
-    __device__ float plogp[26];
+    texture<float> mylog_tex;
+    __device__ float mylog[26];
     struct InitPlogp
     {
         InitPlogp()
         {
-            float plogp_h[26] = {0.0}, *plogp_d;
-            for (char i = 1; i < 26; ++i)
-                plogp_h[i] = -0.04 * i * log(0.04 * i);
-            cudaMemcpyToSymbol(plogp, plogp_h, sizeof(float) * 26);
-            cudaGetSymbolAddress((void **)&plogp_d, plogp);
-            cudaBindTexture(0, plogp_tex, plogp_d);
+            float mylog_h[26] = {
+                0.0,
+                log(1.0),
+                log(2.0),
+                log(3.0),
+                log(4.0),
+                log(5.0),
+                log(6.0),
+                log(7.0),
+                log(8.0),
+                log(9.0),
+                log(10.0),
+                log(11.0),
+                log(12.0),
+                log(13.0),
+                log(14.0),
+                log(15.0),
+                log(16.0),
+                log(17.0),
+                log(18.0),
+                log(19.0),
+                log(20.0),
+                log(21.0),
+                log(22.0),
+                log(23.0),
+                log(24.0),
+                log(25.0)},
+                  *mylog_d;
+            cudaMemcpyToSymbol(mylog, mylog_h, sizeof(float) * 26);
+            cudaGetSymbolAddress((void **)&mylog_d, mylog);
+            cudaBindTexture(0, mylog_tex, mylog_d);
         }
     } tmpInit;
 
@@ -396,23 +508,26 @@ namespace v5
     {
         const int idy = blockIdx.y * blockDim.y + threadIdx.y;
         const int idx = blockIdx.x * blockDim.x + threadIdx.x;
-        int cnt[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-        for (int offsety = -2; offsety <= 2; ++offsety)
-        {
-            const int py = idy + offsety;
-            if (0 <= py && py < height)
-                for (int offsetx = -2; offsetx <= 2; ++offsetx)
-                {
-                    const int px = idx + offsetx;
-                    if (0 <= px && px < width)
-                        ++cnt[(int)input[py * width + px]];
-                }
-        }
-        double ans = 0.0;
-        for (int i = 0; i < 16; ++i)
-            ans += tex1Dfetch(plogp_tex, cnt[i]);
         if (idy < height && idx < width)
+        {
+            int cnt[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+            for (int offsety = -2; offsety <= 2; ++offsety)
+            {
+                const int py = idy + offsety;
+                if (0 <= py && py < height)
+                    for (int offsetx = -2; offsetx <= 2; ++offsetx)
+                    {
+                        const int px = idx + offsetx;
+                        if (0 <= px && px < width)
+                            ++cnt[(int)input[py * width + px]];
+                    }
+            }
+            const int n = neighborhood_size(idx, idy, width, height);
+            double ans = tex1Dfetch(mylog_tex, n);
+            for (int i = 0; i < 16; ++i)
+                ans -= tex1Dfetch(mylog_tex, cnt[i]) * cnt[i] / n;
             output[idy * width + idx] = ans;
+        }
     }
 
     void cudaCallback(
@@ -449,23 +564,8 @@ namespace v5
         CHECK(cudaFree(output_d));
     }
 } // namespace v5
-namespace v6
+namespace v6 //cuda 预处理log到寄存器+使用更小的整型类型
 {
-    texture<float> plogp_tex;
-    __device__ float plogp[26];
-    struct InitPlogp
-    {
-        InitPlogp()
-        {
-            float plogp_h[26] = {0.0}, *plogp_d;
-            for (char i = 1; i < 26; ++i)
-                plogp_h[i] = -0.04 * i * log(0.04 * i);
-            cudaMemcpyToSymbol(plogp, plogp_h, sizeof(float) * 26);
-            cudaGetSymbolAddress((void **)&plogp_d, plogp);
-            cudaBindTexture(0, plogp_tex, plogp_d);
-        }
-    } tmpInit;
-
     __global__ void cudaCallbackKernel(
         const int width,
         const int height,
@@ -474,23 +574,54 @@ namespace v6
     {
         const int idy = blockIdx.y * blockDim.y + threadIdx.y;
         const int idx = blockIdx.x * blockDim.x + threadIdx.x;
-        signed char cnt[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-        for (signed char offsety = -2; offsety <= 2; ++offsety)
-        {
-            const int py = idy + offsety;
-            if (0 <= py && py < height)
-                for (signed char offsetx = -2; offsetx <= 2; ++offsetx)
-                {
-                    const int px = idx + offsetx;
-                    if (0 <= px && px < width)
-                        ++cnt[(signed char)input[py * width + px]];
-                }
-        }
-        double ans = 0.0;
-        for (signed char i = 0; i < 16; ++i)
-            ans += tex1Dfetch(plogp_tex, cnt[i]);
         if (idy < height && idx < width)
+        {
+            signed char cnt[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+            for (signed char offsety = -2; offsety <= 2; ++offsety)
+            {
+                const int py = idy + offsety;
+                if (0 <= py && py < height)
+                    for (signed char offsetx = -2; offsetx <= 2; ++offsetx)
+                    {
+                        const int px = idx + offsetx;
+                        if (0 <= px && px < width)
+                            ++cnt[(signed char)input[py * width + px]];
+                    }
+            }
+            const double mylog[26] = {
+                0.0,
+                log(1.0),
+                log(2.0),
+                log(3.0),
+                log(4.0),
+                log(5.0),
+                log(6.0),
+                log(7.0),
+                log(8.0),
+                log(9.0),
+                log(10.0),
+                log(11.0),
+                log(12.0),
+                log(13.0),
+                log(14.0),
+                log(15.0),
+                log(16.0),
+                log(17.0),
+                log(18.0),
+                log(19.0),
+                log(20.0),
+                log(21.0),
+                log(22.0),
+                log(23.0),
+                log(24.0),
+                log(25.0)};
+
+            const signed char n = neighborhood_size(idx, idy, width, height);
+            double ans = mylog[n];
+            for (signed char i = 0; i < 16; ++i)
+                ans -= mylog[cnt[i]] * cnt[i] / n;
             output[idy * width + idx] = ans;
+        }
     }
 
     void cudaCallback(
@@ -527,7 +658,7 @@ namespace v6
         CHECK(cudaFree(output_d));
     }
 } // namespace v6
-namespace v7
+namespace v7 //cuda 预处理log到寄存器+使用更小的整型类型+使用更小的浮点类型
 {
     __global__ void cudaCallbackKernel(
         const int width,
@@ -537,24 +668,54 @@ namespace v7
     {
         const int idy = blockIdx.y * blockDim.y + threadIdx.y;
         const int idx = blockIdx.x * blockDim.x + threadIdx.x;
-        signed char cnt[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-        for (signed char offsety = -2; offsety <= 2; ++offsety)
-        {
-            const int py = idy + offsety;
-            if (0 <= py && py < height)
-                for (signed char offsetx = -2; offsetx <= 2; ++offsetx)
-                {
-                    const int px = idx + offsetx;
-                    if (0 <= px && px < width)
-                        ++cnt[(signed char)input[py * width + px]];
-                }
-        }
-        double ans = 0.0;
-        for (signed char i = 0; i < 16; ++i)
-            if (cnt[i])
-                ans += -0.04F * cnt[i] * log(0.04F * cnt[i]);
         if (idy < height && idx < width)
+        {
+            signed char cnt[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+            for (signed char offsety = -2; offsety <= 2; ++offsety)
+            {
+                const int py = idy + offsety;
+                if (0 <= py && py < height)
+                    for (signed char offsetx = -2; offsetx <= 2; ++offsetx)
+                    {
+                        const int px = idx + offsetx;
+                        if (0 <= px && px < width)
+                            ++cnt[(signed char)input[py * width + px]];
+                    }
+            }
+            const float mylog[26] = {
+                0.0,
+                log(1.0),
+                log(2.0),
+                log(3.0),
+                log(4.0),
+                log(5.0),
+                log(6.0),
+                log(7.0),
+                log(8.0),
+                log(9.0),
+                log(10.0),
+                log(11.0),
+                log(12.0),
+                log(13.0),
+                log(14.0),
+                log(15.0),
+                log(16.0),
+                log(17.0),
+                log(18.0),
+                log(19.0),
+                log(20.0),
+                log(21.0),
+                log(22.0),
+                log(23.0),
+                log(24.0),
+                log(25.0)};
+
+            const signed char n = neighborhood_size(idx, idy, width, height);
+            double ans = mylog[n], inv_n = 1.0 / n;
+            for (signed char i = 0; i < 16; ++i)
+                ans -= mylog[cnt[i]] * inv_n * cnt[i];
             output[idy * width + idx] = ans;
+        }
     }
 
     void cudaCallback(
@@ -591,36 +752,65 @@ namespace v7
         CHECK(cudaFree(output_d));
     }
 } // namespace v7
-namespace v8
+namespace v8 //cuda 预处理log到寄存器+使用更小的整型类型+使用更小的浮点类型+使用texure memory优化读入
 {
     texture<float, 2> input_tex;
 
     __global__ void cudaCallbackKernel(
         const int width,
         const int height,
-        const float *__restrict__ input,
         float *__restrict__ output)
     {
         const int idy = blockIdx.y * blockDim.y + threadIdx.y;
         const int idx = blockIdx.x * blockDim.x + threadIdx.x;
-        signed char cnt[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-        for (signed char offsety = -2; offsety <= 2; ++offsety)
-        {
-            const int py = idy + offsety;
-            if (0 <= py && py < height)
-                for (signed char offsetx = -2; offsetx <= 2; ++offsetx)
-                {
-                    const int px = idx + offsetx;
-                    if (0 <= px && px < width)
-                        ++cnt[(signed char)tex2D(input_tex, px, py)];
-                }
-        }
-        double ans = 0.0;
-        for (signed char i = 0; i < 16; ++i)
-            if (cnt[i])
-                ans += -0.04F * cnt[i] * log(0.04F * cnt[i]);
         if (idy < height && idx < width)
+        {
+            signed char cnt[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+            for (signed char offsety = -2; offsety <= 2; ++offsety)
+            {
+                const int py = idy + offsety;
+                if (0 <= py && py < height)
+                    for (signed char offsetx = -2; offsetx <= 2; ++offsetx)
+                    {
+                        const int px = idx + offsetx;
+                        if (0 <= px && px < width)
+                            ++cnt[(signed char)tex2D(input_tex, px, py)];
+                    }
+            }
+            const float mylog[26] = {
+                0.0,
+                log(1.0),
+                log(2.0),
+                log(3.0),
+                log(4.0),
+                log(5.0),
+                log(6.0),
+                log(7.0),
+                log(8.0),
+                log(9.0),
+                log(10.0),
+                log(11.0),
+                log(12.0),
+                log(13.0),
+                log(14.0),
+                log(15.0),
+                log(16.0),
+                log(17.0),
+                log(18.0),
+                log(19.0),
+                log(20.0),
+                log(21.0),
+                log(22.0),
+                log(23.0),
+                log(24.0),
+                log(25.0)};
+
+            const signed char n = neighborhood_size(idx, idy, width, height);
+            double ans = mylog[n], inv_n = 1.0 / n;
+            for (signed char i = 0; i < 16; ++i)
+                ans -= mylog[cnt[i]] * inv_n * cnt[i];
             output[idy * width + idx] = ans;
+        }
     }
 
     void cudaCallback(
@@ -629,20 +819,14 @@ namespace v8
         float *sample,
         float **result)
     {
-        float *input_d, *output_d;
+        float *output_d;
 
-        CHECK(cudaMalloc((void **)&input_d, sizeof(float) * width * height));
         CHECK(cudaMalloc((void **)&output_d, sizeof(float) * width * height));
-        CHECK(cudaMemcpy(input_d, sample, sizeof(float) * width * height, cudaMemcpyHostToDevice));
-
-        CHECK(cudaBindTexture2D(
-            0,
-            &input_tex,
-            input_d,
-            &input_tex.channelDesc,
-            width,
-            height,
-            width * sizeof(float)));
+        cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc<float>();
+        cudaArray *cuArray;
+        CHECK(cudaMallocArray(&cuArray, &channelDesc, width, height));
+        CHECK(cudaMemcpyToArray(cuArray, 0, 0, sample, sizeof(float) * width * height, cudaMemcpyHostToDevice));
+        CHECK(cudaBindTextureToArray(input_tex, cuArray));
 
         const int
             BLOCK_DIM_X = 32,
@@ -657,18 +841,15 @@ namespace v8
             blockDim>>>(
             width,
             height,
-            input_d,
             output_d);
-
-        CHECK(cudaUnbindTexture(input_tex));
 
         *result = (float *)malloc(sizeof(float) * width * height);
         CHECK(cudaMemcpy(*result, output_d, sizeof(float) * width * height, cudaMemcpyDeviceToHost));
-        CHECK(cudaFree(input_d));
+        CHECK(cudaFreeArray(cuArray));
         CHECK(cudaFree(output_d));
     }
 } // namespace v8
-namespace v9
+namespace v9 //cuda 预处理log到寄存器+使用更小的整型类型+使用更小的浮点类型+使用shared memory优化读入
 {
     template <
         int BLOCK_DIM_X,
@@ -695,10 +876,39 @@ namespace v9
             for (signed char offsety = -2; offsety <= 2; ++offsety)
                 for (signed char offsetx = -2; offsetx <= 2; ++offsetx)
                     ++cnt[input_s[threadIdx.y + offsety][threadIdx.x + offsetx]];
-            double ans = 0.0;
+
+            const float mylog[26] = {
+                0.0,
+                log(1.0),
+                log(2.0),
+                log(3.0),
+                log(4.0),
+                log(5.0),
+                log(6.0),
+                log(7.0),
+                log(8.0),
+                log(9.0),
+                log(10.0),
+                log(11.0),
+                log(12.0),
+                log(13.0),
+                log(14.0),
+                log(15.0),
+                log(16.0),
+                log(17.0),
+                log(18.0),
+                log(19.0),
+                log(20.0),
+                log(21.0),
+                log(22.0),
+                log(23.0),
+                log(24.0),
+                log(25.0)};
+
+            const signed char n = neighborhood_size(idx, idy, width, height);
+            double ans = mylog[n], inv_n = 1.0 / n;
             for (signed char i = 0; i < 16; ++i)
-                if (cnt[i])
-                    ans += -0.04F * cnt[i] * log(0.04F * cnt[i]);
+                ans -= mylog[cnt[i]] * inv_n * cnt[i];
             output[idy * width + idx] = ans;
         }
     }
@@ -739,7 +949,7 @@ namespace v9
         CHECK(cudaFree(output_d));
     }
 } // namespace v9
-namespace v10
+namespace v10 //openmp baseline
 {
     void cudaCallback(
         int width,
@@ -762,15 +972,15 @@ namespace v10
                     if (0 <= py && py < height && 0 <= px && px < width)
                         ++cnt[(int)sample[py * width + px]];
                 }
-            double ans = 0.0;
+            double n = neighborhood_size(idx, idy, width, height), ans = log(n);
             for (int i = 0; i < 16; ++i)
                 if (cnt[i])
-                    ans += -0.04 * cnt[i] * log(0.04 * cnt[i]);
+                    ans -= log((double)cnt[i]) * cnt[i] / n;
             (*result)[pos] = ans;
         }
     }
 } // namespace v10
-namespace v11
+namespace v11 //openmp 预处理log到寄存器
 {
     void cudaCallback(
         int width,
@@ -793,41 +1003,100 @@ namespace v11
                     if (0 <= py && py < height && 0 <= px && px < width)
                         ++cnt[(int)sample[py * width + px]];
                 }
-            double ans = 0.0;
-            const double plogp[26] = {
-                -0.0,
-                -0.04 * log(0.04),
-                -0.08 * log(0.08),
-                -0.12 * log(0.12),
-                -0.16 * log(0.16),
-                -0.20 * log(0.20),
-                -0.24 * log(0.24),
-                -0.28 * log(0.28),
-                -0.32 * log(0.32),
-                -0.36 * log(0.36),
-                -0.40 * log(0.40),
-                -0.44 * log(0.44),
-                -0.48 * log(0.48),
-                -0.52 * log(0.52),
-                -0.56 * log(0.56),
-                -0.60 * log(0.60),
-                -0.64 * log(0.64),
-                -0.68 * log(0.68),
-                -0.72 * log(0.72),
-                -0.76 * log(0.76),
-                -0.80 * log(0.80),
-                -0.84 * log(0.84),
-                -0.88 * log(0.88),
-                -0.92 * log(0.92),
-                -0.96 * log(0.96),
-                -0.0};
+            const double mylog[26] = {
+                0.0,
+                log(1.0),
+                log(2.0),
+                log(3.0),
+                log(4.0),
+                log(5.0),
+                log(6.0),
+                log(7.0),
+                log(8.0),
+                log(9.0),
+                log(10.0),
+                log(11.0),
+                log(12.0),
+                log(13.0),
+                log(14.0),
+                log(15.0),
+                log(16.0),
+                log(17.0),
+                log(18.0),
+                log(19.0),
+                log(20.0),
+                log(21.0),
+                log(22.0),
+                log(23.0),
+                log(24.0),
+                log(25.0)};
+            const int n = neighborhood_size(idx, idy, width, height);
+            double ans = mylog[n], inv_n = 1.0 / n;
             for (int i = 0; i < 16; ++i)
-                ans += plogp[cnt[i]];
+                ans -= mylog[cnt[i]] * inv_n * cnt[i];
             (*result)[pos] = ans;
         }
     }
 } // namespace v11
-namespace v12
+namespace v12 //openmp 预处理log到寄存器+使用更小的类型
+{
+    void cudaCallback(
+        int width,
+        int height,
+        float *sample,
+        float **result)
+    {
+        *result = (float *)malloc(sizeof(float) * width * height);
+#pragma omp parallel for
+        for (int pos = 0; pos < width * height; ++pos)
+        {
+            const int
+                idy = pos / width,
+                idx = pos - idy * width;
+            signed char cnt[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+            for (signed char offsety = -2; offsety <= 2; ++offsety)
+                for (signed char offsetx = -2; offsetx <= 2; ++offsetx)
+                {
+                    const int py = idy + offsety, px = idx + offsetx;
+                    if (0 <= py && py < height && 0 <= px && px < width)
+                        ++cnt[(signed char)sample[py * width + px]];
+                }
+            const float mylog[26] = {
+                0.0,
+                log(1.0),
+                log(2.0),
+                log(3.0),
+                log(4.0),
+                log(5.0),
+                log(6.0),
+                log(7.0),
+                log(8.0),
+                log(9.0),
+                log(10.0),
+                log(11.0),
+                log(12.0),
+                log(13.0),
+                log(14.0),
+                log(15.0),
+                log(16.0),
+                log(17.0),
+                log(18.0),
+                log(19.0),
+                log(20.0),
+                log(21.0),
+                log(22.0),
+                log(23.0),
+                log(24.0),
+                log(25.0)};
+            const signed char n = neighborhood_size(idx, idy, width, height);
+            double ans = mylog[n], inv_n = 1.0 / n;
+            for (signed char i = 0; i < 16; ++i)
+                ans -= mylog[cnt[i]] * inv_n * cnt[i];
+            (*result)[pos] = ans;
+        }
+    }
+} // namespace v12
+namespace v13 //openmp 预处理log到寄存器+使用更小的类型+预处理前缀和
 {
     void cudaCallback(
         int width,
@@ -862,43 +1131,47 @@ namespace v12
             const int
                 idy = pos / width,
                 idx = pos - idy * width;
-            double ans = 0.0;
-            const double plogp[26] = {
-                -0.0,
-                -0.04 * log(0.04),
-                -0.08 * log(0.08),
-                -0.12 * log(0.12),
-                -0.16 * log(0.16),
-                -0.20 * log(0.20),
-                -0.24 * log(0.24),
-                -0.28 * log(0.28),
-                -0.32 * log(0.32),
-                -0.36 * log(0.36),
-                -0.40 * log(0.40),
-                -0.44 * log(0.44),
-                -0.48 * log(0.48),
-                -0.52 * log(0.52),
-                -0.56 * log(0.56),
-                -0.60 * log(0.60),
-                -0.64 * log(0.64),
-                -0.68 * log(0.68),
-                -0.72 * log(0.72),
-                -0.76 * log(0.76),
-                -0.80 * log(0.80),
-                -0.84 * log(0.84),
-                -0.88 * log(0.88),
-                -0.92 * log(0.92),
-                -0.96 * log(0.96),
-                -0.0};
-            for (int i = 0; i < 16; ++i)
-                ans += plogp[sum[i][(idy + 5) * (width + 5) + idx + 5] - sum[i][(idy + 5) * (width + 5) + idx] - sum[i][idy * (width + 5) + idx + 5] + sum[i][idy * (width + 5) + idx]];
+            const float mylog[26] = {
+                0.0,
+                log(1.0),
+                log(2.0),
+                log(3.0),
+                log(4.0),
+                log(5.0),
+                log(6.0),
+                log(7.0),
+                log(8.0),
+                log(9.0),
+                log(10.0),
+                log(11.0),
+                log(12.0),
+                log(13.0),
+                log(14.0),
+                log(15.0),
+                log(16.0),
+                log(17.0),
+                log(18.0),
+                log(19.0),
+                log(20.0),
+                log(21.0),
+                log(22.0),
+                log(23.0),
+                log(24.0),
+                log(25.0)};
+            const signed char n = neighborhood_size(idx, idy, width, height);
+            double ans = mylog[n], inv_n = 1.0 / n;
+            for (signed char i = 0; i < 16; ++i)
+            {
+                const signed char cnti = sum[i][(idy + 5) * (width + 5) + idx + 5] - sum[i][(idy + 5) * (width + 5) + idx] - sum[i][idy * (width + 5) + idx + 5] + sum[i][idy * (width + 5) + idx];
+                ans -= mylog[cnti] * inv_n * cnti;
+            }
             (*result)[pos] = ans;
         }
         for (int i = 0; i < 16; ++i)
             free(sum[i]);
     }
-} // namespace v12
-namespace v13
+} // namespace v13
+namespace v14
 {
     void cudaCallback(
         int width,
@@ -910,10 +1183,10 @@ namespace v13
         cudaGetDeviceCount(&num_threads);
         if (num_threads > height - 4)
             num_threads = height - 4;
-        if (num_threads < 1 || width * height < 1e5)
+        if (num_threads < 1)
             return v11::cudaCallback(width, height, sample, result);
-        if (num_threads < 2)
-            return v9::cudaCallback(width, height, sample, result);
+        if (num_threads < 2 || width * height < 1e6)
+            return v7::cudaCallback(width, height, sample, result);
         *result = (float *)malloc(sizeof(float) * width * height);
 #pragma omp parallel num_threads(num_threads)
         {
@@ -946,12 +1219,12 @@ namespace v13
             free(thread_result);
         }
     }
-} // namespace v13
+} // namespace v14
 void cudaCallback(
     int width,
     int height,
     float *sample,
     float **result)
 {
-    v13::cudaCallback(width, height, sample, result);
+    v14::cudaCallback(width, height, sample, result);
 }
