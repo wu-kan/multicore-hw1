@@ -11,9 +11,9 @@ cd sources/bin
 rm -fr *
 
 cmake ..  \
-    -DCMAKE_C_FLAGS="-O3 -fopenmp" \
-    -DCMAKE_CXX_FLAGS="-O3 -fopenmp" \
-    -DCUDA_NVCC_FLAGS="-O3 -Xcompiler -fopenmp"
+    -DCMAKE_C_FLAGS="-Ofast -fopenmp" \
+    -DCMAKE_CXX_FLAGS="-Ofast -fopenmp" \
+    -DCUDA_NVCC_FLAGS="-O3 -use_fast_math -ftz=true -Xcompiler -fopenmp"
 make
 
 cd ../..

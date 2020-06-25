@@ -1,7 +1,7 @@
 The system is: Linux - 3.10.0-957.el7.x86_64 - x86_64
 Compiling the C compiler identification source file "CMakeCCompilerId.c" succeeded.
 Compiler: /bin/cc 
-Build flags: -O3;-fopenmp
+Build flags: -Ofast;-fopenmp
 Id flags: 
 
 The output was:
@@ -14,7 +14,7 @@ The C compiler identification is GNU, found in "/public/home/st17341163/multicor
 
 Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" succeeded.
 Compiler: /bin/c++ 
-Build flags: -O3;-fopenmp
+Build flags: -Ofast;-fopenmp
 Id flags: 
 
 The output was:
@@ -28,30 +28,30 @@ The CXX compiler identification is GNU, found in "/public/home/st17341163/multic
 Determining if the C compiler works passed with the following output:
 Change Dir: /public/home/st17341163/multicore-hw1-scaffold/sources/bin/CMakeFiles/CMakeTmp
 
-Run Build Command:/bin/gmake "cmTryCompileExec1439544898/fast"
-/bin/gmake -f CMakeFiles/cmTryCompileExec1439544898.dir/build.make CMakeFiles/cmTryCompileExec1439544898.dir/build
+Run Build Command:/bin/gmake "cmTryCompileExec2220466432/fast"
+/bin/gmake -f CMakeFiles/cmTryCompileExec2220466432.dir/build.make CMakeFiles/cmTryCompileExec2220466432.dir/build
 gmake[1]: Entering directory `/public/home/st17341163/multicore-hw1-scaffold/sources/bin/CMakeFiles/CMakeTmp'
 /usr/bin/cmake -E cmake_progress_report /public/home/st17341163/multicore-hw1-scaffold/sources/bin/CMakeFiles/CMakeTmp/CMakeFiles 1
-Building C object CMakeFiles/cmTryCompileExec1439544898.dir/testCCompiler.c.o
-/bin/cc   -O3 -fopenmp    -o CMakeFiles/cmTryCompileExec1439544898.dir/testCCompiler.c.o   -c /public/home/st17341163/multicore-hw1-scaffold/sources/bin/CMakeFiles/CMakeTmp/testCCompiler.c
-Linking C executable cmTryCompileExec1439544898
-/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTryCompileExec1439544898.dir/link.txt --verbose=1
-/bin/cc  -O3 -fopenmp     CMakeFiles/cmTryCompileExec1439544898.dir/testCCompiler.c.o  -o cmTryCompileExec1439544898 -rdynamic 
+Building C object CMakeFiles/cmTryCompileExec2220466432.dir/testCCompiler.c.o
+/bin/cc   -Ofast -fopenmp    -o CMakeFiles/cmTryCompileExec2220466432.dir/testCCompiler.c.o   -c /public/home/st17341163/multicore-hw1-scaffold/sources/bin/CMakeFiles/CMakeTmp/testCCompiler.c
+Linking C executable cmTryCompileExec2220466432
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTryCompileExec2220466432.dir/link.txt --verbose=1
+/bin/cc  -Ofast -fopenmp     CMakeFiles/cmTryCompileExec2220466432.dir/testCCompiler.c.o  -o cmTryCompileExec2220466432 -rdynamic 
 gmake[1]: Leaving directory `/public/home/st17341163/multicore-hw1-scaffold/sources/bin/CMakeFiles/CMakeTmp'
 
 
 Detecting C compiler ABI info compiled with the following output:
 Change Dir: /public/home/st17341163/multicore-hw1-scaffold/sources/bin/CMakeFiles/CMakeTmp
 
-Run Build Command:/bin/gmake "cmTryCompileExec2561259074/fast"
-/bin/gmake -f CMakeFiles/cmTryCompileExec2561259074.dir/build.make CMakeFiles/cmTryCompileExec2561259074.dir/build
+Run Build Command:/bin/gmake "cmTryCompileExec1754784908/fast"
+/bin/gmake -f CMakeFiles/cmTryCompileExec1754784908.dir/build.make CMakeFiles/cmTryCompileExec1754784908.dir/build
 gmake[1]: Entering directory `/public/home/st17341163/multicore-hw1-scaffold/sources/bin/CMakeFiles/CMakeTmp'
 /usr/bin/cmake -E cmake_progress_report /public/home/st17341163/multicore-hw1-scaffold/sources/bin/CMakeFiles/CMakeTmp/CMakeFiles 1
-Building C object CMakeFiles/cmTryCompileExec2561259074.dir/CMakeCCompilerABI.c.o
-/bin/cc   -O3 -fopenmp    -o CMakeFiles/cmTryCompileExec2561259074.dir/CMakeCCompilerABI.c.o   -c /usr/share/cmake/Modules/CMakeCCompilerABI.c
-Linking C executable cmTryCompileExec2561259074
-/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTryCompileExec2561259074.dir/link.txt --verbose=1
-/bin/cc  -O3 -fopenmp   -v CMakeFiles/cmTryCompileExec2561259074.dir/CMakeCCompilerABI.c.o  -o cmTryCompileExec2561259074 -rdynamic  
+Building C object CMakeFiles/cmTryCompileExec1754784908.dir/CMakeCCompilerABI.c.o
+/bin/cc   -Ofast -fopenmp    -o CMakeFiles/cmTryCompileExec1754784908.dir/CMakeCCompilerABI.c.o   -c /usr/share/cmake/Modules/CMakeCCompilerABI.c
+Linking C executable cmTryCompileExec1754784908
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTryCompileExec1754784908.dir/link.txt --verbose=1
+/bin/cc  -Ofast -fopenmp   -v CMakeFiles/cmTryCompileExec1754784908.dir/CMakeCCompilerABI.c.o  -o cmTryCompileExec1754784908 -rdynamic  
 Using built-in specs.
 COLLECT_GCC=/bin/cc
 COLLECT_LTO_WRAPPER=/usr/libexec/gcc/x86_64-redhat-linux/4.8.5/lto-wrapper
@@ -62,8 +62,8 @@ gcc version 4.8.5 20150623 (Red Hat 4.8.5-36) (GCC)
 COMPILER_PATH=/usr/libexec/gcc/x86_64-redhat-linux/4.8.5/:/usr/libexec/gcc/x86_64-redhat-linux/4.8.5/:/usr/libexec/gcc/x86_64-redhat-linux/:/usr/lib/gcc/x86_64-redhat-linux/4.8.5/:/usr/lib/gcc/x86_64-redhat-linux/
 LIBRARY_PATH=/usr/lib/gcc/x86_64-redhat-linux/4.8.5/:/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/:/lib/../lib64/:/usr/lib/../lib64/:/public/software//compiler/intel/intel-compiler-2017.5.239/compiler/lib/intel64/:/public/software//compiler/intel/intel-compiler-2017.5.239/mkl/lib/intel64/:/public/software//compiler/intel/intel-compiler-2017.5.239/tbb/lib/intel64/:/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../:/lib/:/usr/lib/
 Reading specs from /usr/lib/gcc/x86_64-redhat-linux/4.8.5/libgomp.spec
-COLLECT_GCC_OPTIONS='-O3' '-fopenmp' '-v' '-o' 'cmTryCompileExec2561259074' '-rdynamic' '-mtune=generic' '-march=x86-64' '-pthread'
- /usr/libexec/gcc/x86_64-redhat-linux/4.8.5/collect2 --build-id --no-add-needed --eh-frame-hdr --hash-style=gnu -m elf_x86_64 -export-dynamic -dynamic-linker /lib64/ld-linux-x86-64.so.2 -o cmTryCompileExec2561259074 /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/crt1.o /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/crti.o /usr/lib/gcc/x86_64-redhat-linux/4.8.5/crtbegin.o -L/usr/lib/gcc/x86_64-redhat-linux/4.8.5 -L/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64 -L/lib/../lib64 -L/usr/lib/../lib64 -L/public/software//compiler/intel/intel-compiler-2017.5.239/compiler/lib/intel64 -L/public/software//compiler/intel/intel-compiler-2017.5.239/mkl/lib/intel64 -L/public/software//compiler/intel/intel-compiler-2017.5.239/tbb/lib/intel64 -L/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../.. CMakeFiles/cmTryCompileExec2561259074.dir/CMakeCCompilerABI.c.o -lgomp -lgcc --as-needed -lgcc_s --no-as-needed -lpthread -lc -lgcc --as-needed -lgcc_s --no-as-needed /usr/lib/gcc/x86_64-redhat-linux/4.8.5/crtend.o /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/crtn.o
+COLLECT_GCC_OPTIONS='-Ofast' '-fopenmp' '-v' '-o' 'cmTryCompileExec1754784908' '-rdynamic' '-mtune=generic' '-march=x86-64' '-pthread'
+ /usr/libexec/gcc/x86_64-redhat-linux/4.8.5/collect2 --build-id --no-add-needed --eh-frame-hdr --hash-style=gnu -m elf_x86_64 -export-dynamic -dynamic-linker /lib64/ld-linux-x86-64.so.2 -o cmTryCompileExec1754784908 /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/crt1.o /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/crti.o /usr/lib/gcc/x86_64-redhat-linux/4.8.5/crtbegin.o -L/usr/lib/gcc/x86_64-redhat-linux/4.8.5 -L/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64 -L/lib/../lib64 -L/usr/lib/../lib64 -L/public/software//compiler/intel/intel-compiler-2017.5.239/compiler/lib/intel64 -L/public/software//compiler/intel/intel-compiler-2017.5.239/mkl/lib/intel64 -L/public/software//compiler/intel/intel-compiler-2017.5.239/tbb/lib/intel64 -L/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../.. CMakeFiles/cmTryCompileExec1754784908.dir/CMakeCCompilerABI.c.o -lgomp -lgcc --as-needed -lgcc_s --no-as-needed -lpthread -lc -lgcc --as-needed -lgcc_s --no-as-needed /usr/lib/gcc/x86_64-redhat-linux/4.8.5/crtfastmath.o /usr/lib/gcc/x86_64-redhat-linux/4.8.5/crtend.o /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/crtn.o
 gmake[1]: Leaving directory `/public/home/st17341163/multicore-hw1-scaffold/sources/bin/CMakeFiles/CMakeTmp'
 
 
@@ -71,15 +71,15 @@ Parsed C implicit link information from above output:
   link line regex: [^( *|.*[/\])(ld|([^/\]+-)?ld|collect2)[^/\]*( |$)]
   ignore line: [Change Dir: /public/home/st17341163/multicore-hw1-scaffold/sources/bin/CMakeFiles/CMakeTmp]
   ignore line: []
-  ignore line: [Run Build Command:/bin/gmake "cmTryCompileExec2561259074/fast"]
-  ignore line: [/bin/gmake -f CMakeFiles/cmTryCompileExec2561259074.dir/build.make CMakeFiles/cmTryCompileExec2561259074.dir/build]
+  ignore line: [Run Build Command:/bin/gmake "cmTryCompileExec1754784908/fast"]
+  ignore line: [/bin/gmake -f CMakeFiles/cmTryCompileExec1754784908.dir/build.make CMakeFiles/cmTryCompileExec1754784908.dir/build]
   ignore line: [gmake[1]: Entering directory `/public/home/st17341163/multicore-hw1-scaffold/sources/bin/CMakeFiles/CMakeTmp']
   ignore line: [/usr/bin/cmake -E cmake_progress_report /public/home/st17341163/multicore-hw1-scaffold/sources/bin/CMakeFiles/CMakeTmp/CMakeFiles 1]
-  ignore line: [Building C object CMakeFiles/cmTryCompileExec2561259074.dir/CMakeCCompilerABI.c.o]
-  ignore line: [/bin/cc   -O3 -fopenmp    -o CMakeFiles/cmTryCompileExec2561259074.dir/CMakeCCompilerABI.c.o   -c /usr/share/cmake/Modules/CMakeCCompilerABI.c]
-  ignore line: [Linking C executable cmTryCompileExec2561259074]
-  ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTryCompileExec2561259074.dir/link.txt --verbose=1]
-  ignore line: [/bin/cc  -O3 -fopenmp   -v CMakeFiles/cmTryCompileExec2561259074.dir/CMakeCCompilerABI.c.o  -o cmTryCompileExec2561259074 -rdynamic  ]
+  ignore line: [Building C object CMakeFiles/cmTryCompileExec1754784908.dir/CMakeCCompilerABI.c.o]
+  ignore line: [/bin/cc   -Ofast -fopenmp    -o CMakeFiles/cmTryCompileExec1754784908.dir/CMakeCCompilerABI.c.o   -c /usr/share/cmake/Modules/CMakeCCompilerABI.c]
+  ignore line: [Linking C executable cmTryCompileExec1754784908]
+  ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTryCompileExec1754784908.dir/link.txt --verbose=1]
+  ignore line: [/bin/cc  -Ofast -fopenmp   -v CMakeFiles/cmTryCompileExec1754784908.dir/CMakeCCompilerABI.c.o  -o cmTryCompileExec1754784908 -rdynamic  ]
   ignore line: [Using built-in specs.]
   ignore line: [COLLECT_GCC=/bin/cc]
   ignore line: [COLLECT_LTO_WRAPPER=/usr/libexec/gcc/x86_64-redhat-linux/4.8.5/lto-wrapper]
@@ -90,8 +90,8 @@ Parsed C implicit link information from above output:
   ignore line: [COMPILER_PATH=/usr/libexec/gcc/x86_64-redhat-linux/4.8.5/:/usr/libexec/gcc/x86_64-redhat-linux/4.8.5/:/usr/libexec/gcc/x86_64-redhat-linux/:/usr/lib/gcc/x86_64-redhat-linux/4.8.5/:/usr/lib/gcc/x86_64-redhat-linux/]
   ignore line: [LIBRARY_PATH=/usr/lib/gcc/x86_64-redhat-linux/4.8.5/:/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/:/lib/../lib64/:/usr/lib/../lib64/:/public/software//compiler/intel/intel-compiler-2017.5.239/compiler/lib/intel64/:/public/software//compiler/intel/intel-compiler-2017.5.239/mkl/lib/intel64/:/public/software//compiler/intel/intel-compiler-2017.5.239/tbb/lib/intel64/:/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../:/lib/:/usr/lib/]
   ignore line: [Reading specs from /usr/lib/gcc/x86_64-redhat-linux/4.8.5/libgomp.spec]
-  ignore line: [COLLECT_GCC_OPTIONS='-O3' '-fopenmp' '-v' '-o' 'cmTryCompileExec2561259074' '-rdynamic' '-mtune=generic' '-march=x86-64' '-pthread']
-  link line: [ /usr/libexec/gcc/x86_64-redhat-linux/4.8.5/collect2 --build-id --no-add-needed --eh-frame-hdr --hash-style=gnu -m elf_x86_64 -export-dynamic -dynamic-linker /lib64/ld-linux-x86-64.so.2 -o cmTryCompileExec2561259074 /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/crt1.o /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/crti.o /usr/lib/gcc/x86_64-redhat-linux/4.8.5/crtbegin.o -L/usr/lib/gcc/x86_64-redhat-linux/4.8.5 -L/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64 -L/lib/../lib64 -L/usr/lib/../lib64 -L/public/software//compiler/intel/intel-compiler-2017.5.239/compiler/lib/intel64 -L/public/software//compiler/intel/intel-compiler-2017.5.239/mkl/lib/intel64 -L/public/software//compiler/intel/intel-compiler-2017.5.239/tbb/lib/intel64 -L/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../.. CMakeFiles/cmTryCompileExec2561259074.dir/CMakeCCompilerABI.c.o -lgomp -lgcc --as-needed -lgcc_s --no-as-needed -lpthread -lc -lgcc --as-needed -lgcc_s --no-as-needed /usr/lib/gcc/x86_64-redhat-linux/4.8.5/crtend.o /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/crtn.o]
+  ignore line: [COLLECT_GCC_OPTIONS='-Ofast' '-fopenmp' '-v' '-o' 'cmTryCompileExec1754784908' '-rdynamic' '-mtune=generic' '-march=x86-64' '-pthread']
+  link line: [ /usr/libexec/gcc/x86_64-redhat-linux/4.8.5/collect2 --build-id --no-add-needed --eh-frame-hdr --hash-style=gnu -m elf_x86_64 -export-dynamic -dynamic-linker /lib64/ld-linux-x86-64.so.2 -o cmTryCompileExec1754784908 /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/crt1.o /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/crti.o /usr/lib/gcc/x86_64-redhat-linux/4.8.5/crtbegin.o -L/usr/lib/gcc/x86_64-redhat-linux/4.8.5 -L/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64 -L/lib/../lib64 -L/usr/lib/../lib64 -L/public/software//compiler/intel/intel-compiler-2017.5.239/compiler/lib/intel64 -L/public/software//compiler/intel/intel-compiler-2017.5.239/mkl/lib/intel64 -L/public/software//compiler/intel/intel-compiler-2017.5.239/tbb/lib/intel64 -L/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../.. CMakeFiles/cmTryCompileExec1754784908.dir/CMakeCCompilerABI.c.o -lgomp -lgcc --as-needed -lgcc_s --no-as-needed -lpthread -lc -lgcc --as-needed -lgcc_s --no-as-needed /usr/lib/gcc/x86_64-redhat-linux/4.8.5/crtfastmath.o /usr/lib/gcc/x86_64-redhat-linux/4.8.5/crtend.o /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/crtn.o]
     arg [/usr/libexec/gcc/x86_64-redhat-linux/4.8.5/collect2] ==> ignore
     arg [--build-id] ==> ignore
     arg [--no-add-needed] ==> ignore
@@ -103,7 +103,7 @@ Parsed C implicit link information from above output:
     arg [-dynamic-linker] ==> ignore
     arg [/lib64/ld-linux-x86-64.so.2] ==> ignore
     arg [-o] ==> ignore
-    arg [cmTryCompileExec2561259074] ==> ignore
+    arg [cmTryCompileExec1754784908] ==> ignore
     arg [/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/crt1.o] ==> ignore
     arg [/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/crti.o] ==> ignore
     arg [/usr/lib/gcc/x86_64-redhat-linux/4.8.5/crtbegin.o] ==> ignore
@@ -115,7 +115,7 @@ Parsed C implicit link information from above output:
     arg [-L/public/software//compiler/intel/intel-compiler-2017.5.239/mkl/lib/intel64] ==> dir [/public/software//compiler/intel/intel-compiler-2017.5.239/mkl/lib/intel64]
     arg [-L/public/software//compiler/intel/intel-compiler-2017.5.239/tbb/lib/intel64] ==> dir [/public/software//compiler/intel/intel-compiler-2017.5.239/tbb/lib/intel64]
     arg [-L/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../..] ==> dir [/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../..]
-    arg [CMakeFiles/cmTryCompileExec2561259074.dir/CMakeCCompilerABI.c.o] ==> ignore
+    arg [CMakeFiles/cmTryCompileExec1754784908.dir/CMakeCCompilerABI.c.o] ==> ignore
     arg [-lgomp] ==> lib [gomp]
     arg [-lgcc] ==> lib [gcc]
     arg [--as-needed] ==> ignore
@@ -127,6 +127,7 @@ Parsed C implicit link information from above output:
     arg [--as-needed] ==> ignore
     arg [-lgcc_s] ==> lib [gcc_s]
     arg [--no-as-needed] ==> ignore
+    arg [/usr/lib/gcc/x86_64-redhat-linux/4.8.5/crtfastmath.o] ==> ignore
     arg [/usr/lib/gcc/x86_64-redhat-linux/4.8.5/crtend.o] ==> ignore
     arg [/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/crtn.o] ==> ignore
   remove lib [gcc]
@@ -149,30 +150,30 @@ Parsed C implicit link information from above output:
 Determining if the CXX compiler works passed with the following output:
 Change Dir: /public/home/st17341163/multicore-hw1-scaffold/sources/bin/CMakeFiles/CMakeTmp
 
-Run Build Command:/bin/gmake "cmTryCompileExec3291129472/fast"
-/bin/gmake -f CMakeFiles/cmTryCompileExec3291129472.dir/build.make CMakeFiles/cmTryCompileExec3291129472.dir/build
+Run Build Command:/bin/gmake "cmTryCompileExec3483998612/fast"
+/bin/gmake -f CMakeFiles/cmTryCompileExec3483998612.dir/build.make CMakeFiles/cmTryCompileExec3483998612.dir/build
 gmake[1]: Entering directory `/public/home/st17341163/multicore-hw1-scaffold/sources/bin/CMakeFiles/CMakeTmp'
 /usr/bin/cmake -E cmake_progress_report /public/home/st17341163/multicore-hw1-scaffold/sources/bin/CMakeFiles/CMakeTmp/CMakeFiles 1
-Building CXX object CMakeFiles/cmTryCompileExec3291129472.dir/testCXXCompiler.cxx.o
-/bin/c++    -O3 -fopenmp    -o CMakeFiles/cmTryCompileExec3291129472.dir/testCXXCompiler.cxx.o -c /public/home/st17341163/multicore-hw1-scaffold/sources/bin/CMakeFiles/CMakeTmp/testCXXCompiler.cxx
-Linking CXX executable cmTryCompileExec3291129472
-/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTryCompileExec3291129472.dir/link.txt --verbose=1
-/bin/c++   -O3 -fopenmp     CMakeFiles/cmTryCompileExec3291129472.dir/testCXXCompiler.cxx.o  -o cmTryCompileExec3291129472 -rdynamic 
+Building CXX object CMakeFiles/cmTryCompileExec3483998612.dir/testCXXCompiler.cxx.o
+/bin/c++    -Ofast -fopenmp    -o CMakeFiles/cmTryCompileExec3483998612.dir/testCXXCompiler.cxx.o -c /public/home/st17341163/multicore-hw1-scaffold/sources/bin/CMakeFiles/CMakeTmp/testCXXCompiler.cxx
+Linking CXX executable cmTryCompileExec3483998612
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTryCompileExec3483998612.dir/link.txt --verbose=1
+/bin/c++   -Ofast -fopenmp     CMakeFiles/cmTryCompileExec3483998612.dir/testCXXCompiler.cxx.o  -o cmTryCompileExec3483998612 -rdynamic 
 gmake[1]: Leaving directory `/public/home/st17341163/multicore-hw1-scaffold/sources/bin/CMakeFiles/CMakeTmp'
 
 
 Detecting CXX compiler ABI info compiled with the following output:
 Change Dir: /public/home/st17341163/multicore-hw1-scaffold/sources/bin/CMakeFiles/CMakeTmp
 
-Run Build Command:/bin/gmake "cmTryCompileExec2803952503/fast"
-/bin/gmake -f CMakeFiles/cmTryCompileExec2803952503.dir/build.make CMakeFiles/cmTryCompileExec2803952503.dir/build
+Run Build Command:/bin/gmake "cmTryCompileExec1071591200/fast"
+/bin/gmake -f CMakeFiles/cmTryCompileExec1071591200.dir/build.make CMakeFiles/cmTryCompileExec1071591200.dir/build
 gmake[1]: Entering directory `/public/home/st17341163/multicore-hw1-scaffold/sources/bin/CMakeFiles/CMakeTmp'
 /usr/bin/cmake -E cmake_progress_report /public/home/st17341163/multicore-hw1-scaffold/sources/bin/CMakeFiles/CMakeTmp/CMakeFiles 1
-Building CXX object CMakeFiles/cmTryCompileExec2803952503.dir/CMakeCXXCompilerABI.cpp.o
-/bin/c++    -O3 -fopenmp    -o CMakeFiles/cmTryCompileExec2803952503.dir/CMakeCXXCompilerABI.cpp.o -c /usr/share/cmake/Modules/CMakeCXXCompilerABI.cpp
-Linking CXX executable cmTryCompileExec2803952503
-/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTryCompileExec2803952503.dir/link.txt --verbose=1
-/bin/c++   -O3 -fopenmp   -v CMakeFiles/cmTryCompileExec2803952503.dir/CMakeCXXCompilerABI.cpp.o  -o cmTryCompileExec2803952503 -rdynamic  
+Building CXX object CMakeFiles/cmTryCompileExec1071591200.dir/CMakeCXXCompilerABI.cpp.o
+/bin/c++    -Ofast -fopenmp    -o CMakeFiles/cmTryCompileExec1071591200.dir/CMakeCXXCompilerABI.cpp.o -c /usr/share/cmake/Modules/CMakeCXXCompilerABI.cpp
+Linking CXX executable cmTryCompileExec1071591200
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTryCompileExec1071591200.dir/link.txt --verbose=1
+/bin/c++   -Ofast -fopenmp   -v CMakeFiles/cmTryCompileExec1071591200.dir/CMakeCXXCompilerABI.cpp.o  -o cmTryCompileExec1071591200 -rdynamic  
 Using built-in specs.
 COLLECT_GCC=/bin/c++
 COLLECT_LTO_WRAPPER=/usr/libexec/gcc/x86_64-redhat-linux/4.8.5/lto-wrapper
@@ -183,8 +184,8 @@ gcc version 4.8.5 20150623 (Red Hat 4.8.5-36) (GCC)
 COMPILER_PATH=/usr/libexec/gcc/x86_64-redhat-linux/4.8.5/:/usr/libexec/gcc/x86_64-redhat-linux/4.8.5/:/usr/libexec/gcc/x86_64-redhat-linux/:/usr/lib/gcc/x86_64-redhat-linux/4.8.5/:/usr/lib/gcc/x86_64-redhat-linux/
 LIBRARY_PATH=/usr/lib/gcc/x86_64-redhat-linux/4.8.5/:/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/:/lib/../lib64/:/usr/lib/../lib64/:/public/software//compiler/intel/intel-compiler-2017.5.239/compiler/lib/intel64/:/public/software//compiler/intel/intel-compiler-2017.5.239/mkl/lib/intel64/:/public/software//compiler/intel/intel-compiler-2017.5.239/tbb/lib/intel64/:/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../:/lib/:/usr/lib/
 Reading specs from /usr/lib/gcc/x86_64-redhat-linux/4.8.5/libgomp.spec
-COLLECT_GCC_OPTIONS='-O3' '-fopenmp' '-v' '-o' 'cmTryCompileExec2803952503' '-rdynamic' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-pthread'
- /usr/libexec/gcc/x86_64-redhat-linux/4.8.5/collect2 --build-id --no-add-needed --eh-frame-hdr --hash-style=gnu -m elf_x86_64 -export-dynamic -dynamic-linker /lib64/ld-linux-x86-64.so.2 -o cmTryCompileExec2803952503 /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/crt1.o /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/crti.o /usr/lib/gcc/x86_64-redhat-linux/4.8.5/crtbegin.o -L/usr/lib/gcc/x86_64-redhat-linux/4.8.5 -L/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64 -L/lib/../lib64 -L/usr/lib/../lib64 -L/public/software//compiler/intel/intel-compiler-2017.5.239/compiler/lib/intel64 -L/public/software//compiler/intel/intel-compiler-2017.5.239/mkl/lib/intel64 -L/public/software//compiler/intel/intel-compiler-2017.5.239/tbb/lib/intel64 -L/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../.. CMakeFiles/cmTryCompileExec2803952503.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgomp -lgcc_s -lgcc -lpthread -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-redhat-linux/4.8.5/crtend.o /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/crtn.o
+COLLECT_GCC_OPTIONS='-Ofast' '-fopenmp' '-v' '-o' 'cmTryCompileExec1071591200' '-rdynamic' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-pthread'
+ /usr/libexec/gcc/x86_64-redhat-linux/4.8.5/collect2 --build-id --no-add-needed --eh-frame-hdr --hash-style=gnu -m elf_x86_64 -export-dynamic -dynamic-linker /lib64/ld-linux-x86-64.so.2 -o cmTryCompileExec1071591200 /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/crt1.o /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/crti.o /usr/lib/gcc/x86_64-redhat-linux/4.8.5/crtbegin.o -L/usr/lib/gcc/x86_64-redhat-linux/4.8.5 -L/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64 -L/lib/../lib64 -L/usr/lib/../lib64 -L/public/software//compiler/intel/intel-compiler-2017.5.239/compiler/lib/intel64 -L/public/software//compiler/intel/intel-compiler-2017.5.239/mkl/lib/intel64 -L/public/software//compiler/intel/intel-compiler-2017.5.239/tbb/lib/intel64 -L/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../.. CMakeFiles/cmTryCompileExec1071591200.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgomp -lgcc_s -lgcc -lpthread -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-redhat-linux/4.8.5/crtfastmath.o /usr/lib/gcc/x86_64-redhat-linux/4.8.5/crtend.o /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/crtn.o
 gmake[1]: Leaving directory `/public/home/st17341163/multicore-hw1-scaffold/sources/bin/CMakeFiles/CMakeTmp'
 
 
@@ -192,15 +193,15 @@ Parsed CXX implicit link information from above output:
   link line regex: [^( *|.*[/\])(ld|([^/\]+-)?ld|collect2)[^/\]*( |$)]
   ignore line: [Change Dir: /public/home/st17341163/multicore-hw1-scaffold/sources/bin/CMakeFiles/CMakeTmp]
   ignore line: []
-  ignore line: [Run Build Command:/bin/gmake "cmTryCompileExec2803952503/fast"]
-  ignore line: [/bin/gmake -f CMakeFiles/cmTryCompileExec2803952503.dir/build.make CMakeFiles/cmTryCompileExec2803952503.dir/build]
+  ignore line: [Run Build Command:/bin/gmake "cmTryCompileExec1071591200/fast"]
+  ignore line: [/bin/gmake -f CMakeFiles/cmTryCompileExec1071591200.dir/build.make CMakeFiles/cmTryCompileExec1071591200.dir/build]
   ignore line: [gmake[1]: Entering directory `/public/home/st17341163/multicore-hw1-scaffold/sources/bin/CMakeFiles/CMakeTmp']
   ignore line: [/usr/bin/cmake -E cmake_progress_report /public/home/st17341163/multicore-hw1-scaffold/sources/bin/CMakeFiles/CMakeTmp/CMakeFiles 1]
-  ignore line: [Building CXX object CMakeFiles/cmTryCompileExec2803952503.dir/CMakeCXXCompilerABI.cpp.o]
-  ignore line: [/bin/c++    -O3 -fopenmp    -o CMakeFiles/cmTryCompileExec2803952503.dir/CMakeCXXCompilerABI.cpp.o -c /usr/share/cmake/Modules/CMakeCXXCompilerABI.cpp]
-  ignore line: [Linking CXX executable cmTryCompileExec2803952503]
-  ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTryCompileExec2803952503.dir/link.txt --verbose=1]
-  ignore line: [/bin/c++   -O3 -fopenmp   -v CMakeFiles/cmTryCompileExec2803952503.dir/CMakeCXXCompilerABI.cpp.o  -o cmTryCompileExec2803952503 -rdynamic  ]
+  ignore line: [Building CXX object CMakeFiles/cmTryCompileExec1071591200.dir/CMakeCXXCompilerABI.cpp.o]
+  ignore line: [/bin/c++    -Ofast -fopenmp    -o CMakeFiles/cmTryCompileExec1071591200.dir/CMakeCXXCompilerABI.cpp.o -c /usr/share/cmake/Modules/CMakeCXXCompilerABI.cpp]
+  ignore line: [Linking CXX executable cmTryCompileExec1071591200]
+  ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTryCompileExec1071591200.dir/link.txt --verbose=1]
+  ignore line: [/bin/c++   -Ofast -fopenmp   -v CMakeFiles/cmTryCompileExec1071591200.dir/CMakeCXXCompilerABI.cpp.o  -o cmTryCompileExec1071591200 -rdynamic  ]
   ignore line: [Using built-in specs.]
   ignore line: [COLLECT_GCC=/bin/c++]
   ignore line: [COLLECT_LTO_WRAPPER=/usr/libexec/gcc/x86_64-redhat-linux/4.8.5/lto-wrapper]
@@ -211,8 +212,8 @@ Parsed CXX implicit link information from above output:
   ignore line: [COMPILER_PATH=/usr/libexec/gcc/x86_64-redhat-linux/4.8.5/:/usr/libexec/gcc/x86_64-redhat-linux/4.8.5/:/usr/libexec/gcc/x86_64-redhat-linux/:/usr/lib/gcc/x86_64-redhat-linux/4.8.5/:/usr/lib/gcc/x86_64-redhat-linux/]
   ignore line: [LIBRARY_PATH=/usr/lib/gcc/x86_64-redhat-linux/4.8.5/:/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/:/lib/../lib64/:/usr/lib/../lib64/:/public/software//compiler/intel/intel-compiler-2017.5.239/compiler/lib/intel64/:/public/software//compiler/intel/intel-compiler-2017.5.239/mkl/lib/intel64/:/public/software//compiler/intel/intel-compiler-2017.5.239/tbb/lib/intel64/:/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../:/lib/:/usr/lib/]
   ignore line: [Reading specs from /usr/lib/gcc/x86_64-redhat-linux/4.8.5/libgomp.spec]
-  ignore line: [COLLECT_GCC_OPTIONS='-O3' '-fopenmp' '-v' '-o' 'cmTryCompileExec2803952503' '-rdynamic' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-pthread']
-  link line: [ /usr/libexec/gcc/x86_64-redhat-linux/4.8.5/collect2 --build-id --no-add-needed --eh-frame-hdr --hash-style=gnu -m elf_x86_64 -export-dynamic -dynamic-linker /lib64/ld-linux-x86-64.so.2 -o cmTryCompileExec2803952503 /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/crt1.o /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/crti.o /usr/lib/gcc/x86_64-redhat-linux/4.8.5/crtbegin.o -L/usr/lib/gcc/x86_64-redhat-linux/4.8.5 -L/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64 -L/lib/../lib64 -L/usr/lib/../lib64 -L/public/software//compiler/intel/intel-compiler-2017.5.239/compiler/lib/intel64 -L/public/software//compiler/intel/intel-compiler-2017.5.239/mkl/lib/intel64 -L/public/software//compiler/intel/intel-compiler-2017.5.239/tbb/lib/intel64 -L/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../.. CMakeFiles/cmTryCompileExec2803952503.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgomp -lgcc_s -lgcc -lpthread -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-redhat-linux/4.8.5/crtend.o /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/crtn.o]
+  ignore line: [COLLECT_GCC_OPTIONS='-Ofast' '-fopenmp' '-v' '-o' 'cmTryCompileExec1071591200' '-rdynamic' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-pthread']
+  link line: [ /usr/libexec/gcc/x86_64-redhat-linux/4.8.5/collect2 --build-id --no-add-needed --eh-frame-hdr --hash-style=gnu -m elf_x86_64 -export-dynamic -dynamic-linker /lib64/ld-linux-x86-64.so.2 -o cmTryCompileExec1071591200 /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/crt1.o /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/crti.o /usr/lib/gcc/x86_64-redhat-linux/4.8.5/crtbegin.o -L/usr/lib/gcc/x86_64-redhat-linux/4.8.5 -L/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64 -L/lib/../lib64 -L/usr/lib/../lib64 -L/public/software//compiler/intel/intel-compiler-2017.5.239/compiler/lib/intel64 -L/public/software//compiler/intel/intel-compiler-2017.5.239/mkl/lib/intel64 -L/public/software//compiler/intel/intel-compiler-2017.5.239/tbb/lib/intel64 -L/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../.. CMakeFiles/cmTryCompileExec1071591200.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgomp -lgcc_s -lgcc -lpthread -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-redhat-linux/4.8.5/crtfastmath.o /usr/lib/gcc/x86_64-redhat-linux/4.8.5/crtend.o /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/crtn.o]
     arg [/usr/libexec/gcc/x86_64-redhat-linux/4.8.5/collect2] ==> ignore
     arg [--build-id] ==> ignore
     arg [--no-add-needed] ==> ignore
@@ -224,7 +225,7 @@ Parsed CXX implicit link information from above output:
     arg [-dynamic-linker] ==> ignore
     arg [/lib64/ld-linux-x86-64.so.2] ==> ignore
     arg [-o] ==> ignore
-    arg [cmTryCompileExec2803952503] ==> ignore
+    arg [cmTryCompileExec1071591200] ==> ignore
     arg [/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/crt1.o] ==> ignore
     arg [/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/crti.o] ==> ignore
     arg [/usr/lib/gcc/x86_64-redhat-linux/4.8.5/crtbegin.o] ==> ignore
@@ -236,7 +237,7 @@ Parsed CXX implicit link information from above output:
     arg [-L/public/software//compiler/intel/intel-compiler-2017.5.239/mkl/lib/intel64] ==> dir [/public/software//compiler/intel/intel-compiler-2017.5.239/mkl/lib/intel64]
     arg [-L/public/software//compiler/intel/intel-compiler-2017.5.239/tbb/lib/intel64] ==> dir [/public/software//compiler/intel/intel-compiler-2017.5.239/tbb/lib/intel64]
     arg [-L/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../..] ==> dir [/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../..]
-    arg [CMakeFiles/cmTryCompileExec2803952503.dir/CMakeCXXCompilerABI.cpp.o] ==> ignore
+    arg [CMakeFiles/cmTryCompileExec1071591200.dir/CMakeCXXCompilerABI.cpp.o] ==> ignore
     arg [-lstdc++] ==> lib [stdc++]
     arg [-lm] ==> lib [m]
     arg [-lgomp] ==> lib [gomp]
@@ -246,6 +247,7 @@ Parsed CXX implicit link information from above output:
     arg [-lc] ==> lib [c]
     arg [-lgcc_s] ==> lib [gcc_s]
     arg [-lgcc] ==> lib [gcc]
+    arg [/usr/lib/gcc/x86_64-redhat-linux/4.8.5/crtfastmath.o] ==> ignore
     arg [/usr/lib/gcc/x86_64-redhat-linux/4.8.5/crtend.o] ==> ignore
     arg [/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/crtn.o] ==> ignore
   remove lib [gcc_s]

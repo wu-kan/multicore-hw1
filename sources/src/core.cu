@@ -1,31 +1,8 @@
 #include "core.h"
 
-__forceinline__ __device__ __host__ int
-neighborhood_size(int x, int y, int width, int height)
-{
-    switch (min(min(x, width - x), 2) << 2 | min(min(y, height - y), 2))
-    {
-    case 0:
-        return 9;
-    case 1:
-    case 4:
-        return 12;
-    case 2:
-    case 8:
-        return 15;
-    case 5:
-        return 16;
-    case 6:
-    case 9:
-        return 20;
-    default:
-        return 25;
-    }
-}
-
 namespace v0 //cuda baseline
 {
-    __global__ void cudaCallbackKernel(
+    static __global__ void cudaCallbackKernel(
         const int width,
         const int height,
         const float *__restrict__ input,
@@ -47,15 +24,18 @@ namespace v0 //cuda baseline
                             ++cnt[(int)input[py * width + px]];
                     }
             }
-            double n = neighborhood_size(idx, idy, width, height), ans = log(n);
+            double
+                n = (min(idx, 2) + 1 + min(width - idx, 2)) * (min(idy, 2) + 1 + min(height - idy, 2)),
+                n_inv = 1.0 / n,
+                ans = log(n);
             for (int i = 0; i < 16; ++i)
                 if (cnt[i])
-                    ans -= log((double)cnt[i]) * cnt[i] / n;
+                    ans -= log((double)cnt[i]) * cnt[i] * n_inv;
             output[idy * width + idx] = ans;
         }
     }
 
-    void cudaCallback(
+    static void cudaCallback(
         int width,
         int height,
         float *sample,
@@ -91,7 +71,7 @@ namespace v0 //cuda baseline
 } // namespace v0
 namespace v1 //cuda 预处理log到寄存器
 {
-    __global__ void cudaCallbackKernel(
+    static __global__ void cudaCallbackKernel(
         const int width,
         const int height,
         const float *__restrict__ input,
@@ -141,15 +121,15 @@ namespace v1 //cuda 预处理log到寄存器
                 log(24.0),
                 log(25.0)};
 
-            const int n = neighborhood_size(idx, idy, width, height);
-            double ans = mylog[n];
+            const int n = (min(idx, 2) + 1 + min(width - idx, 2)) * (min(idy, 2) + 1 + min(height - idy, 2));
+            double ans = mylog[n], n_inv = 1.0 / n;
             for (int i = 0; i < 16; ++i)
-                ans -= mylog[cnt[i]] * cnt[i] / n;
+                ans -= mylog[cnt[i]] * cnt[i] * n_inv;
             output[idy * width + idx] = ans;
         }
     }
 
-    void cudaCallback(
+    static void cudaCallback(
         int width,
         int height,
         float *sample,
@@ -185,7 +165,7 @@ namespace v1 //cuda 预处理log到寄存器
 } // namespace v1
 namespace v2 //cuda 预处理log到shared memory
 {
-    __global__ void cudaCallbackKernel(
+    static __global__ void cudaCallbackKernel(
         const int width,
         const int height,
         const float *__restrict__ input,
@@ -212,15 +192,15 @@ namespace v2 //cuda 预处理log到shared memory
                             ++cnt[(int)input[py * width + px]];
                     }
             }
-            const int n = neighborhood_size(idx, idy, width, height);
-            double ans = mylog[n];
+            const int n = (min(idx, 2) + 1 + min(width - idx, 2)) * (min(idy, 2) + 1 + min(height - idy, 2));
+            double ans = mylog[n], n_inv = 1.0 / n;
             for (int i = 0; i < 16; ++i)
-                ans -= mylog[cnt[i]] * cnt[i] / n;
+                ans -= mylog[cnt[i]] * cnt[i] * n_inv;
             output[idy * width + idx] = ans;
         }
     }
 
-    void cudaCallback(
+    static void cudaCallback(
         int width,
         int height,
         float *sample,
@@ -256,8 +236,8 @@ namespace v2 //cuda 预处理log到shared memory
 } // namespace v2
 namespace v3 //cuda 预处理log到constant memory
 {
-    __constant__ double mylog[26];
-    struct InitPlogp
+    static __constant__ double mylog[26];
+    static struct InitPlogp
     {
         InitPlogp()
         {
@@ -292,7 +272,7 @@ namespace v3 //cuda 预处理log到constant memory
         }
     } tmpInit;
 
-    __global__ void cudaCallbackKernel(
+    static __global__ void cudaCallbackKernel(
         const int width,
         const int height,
         const float *__restrict__ input,
@@ -314,15 +294,15 @@ namespace v3 //cuda 预处理log到constant memory
                             ++cnt[(int)input[py * width + px]];
                     }
             }
-            const int n = neighborhood_size(idx, idy, width, height);
-            double ans = mylog[n];
+            const int n = (min(idx, 2) + 1 + min(width - idx, 2)) * (min(idy, 2) + 1 + min(height - idy, 2));
+            double ans = mylog[n], n_inv = 1.0 / n;
             for (int i = 0; i < 16; ++i)
-                ans -= mylog[cnt[i]] * cnt[i] / n;
+                ans -= mylog[cnt[i]] * cnt[i] * n_inv;
             output[idy * width + idx] = ans;
         }
     }
 
-    void cudaCallback(
+    static void cudaCallback(
         int width,
         int height,
         float *sample,
@@ -358,8 +338,8 @@ namespace v3 //cuda 预处理log到constant memory
 } // namespace v3
 namespace v4 //cuda 预处理log到device memory
 {
-    __device__ double mylog[26];
-    struct InitPlogp
+    static __device__ double mylog[26];
+    static struct InitPlogp
     {
         InitPlogp()
         {
@@ -394,7 +374,7 @@ namespace v4 //cuda 预处理log到device memory
         }
     } tmpInit;
 
-    __global__ void cudaCallbackKernel(
+    static __global__ void cudaCallbackKernel(
         const int width,
         const int height,
         const float *__restrict__ input,
@@ -416,15 +396,15 @@ namespace v4 //cuda 预处理log到device memory
                             ++cnt[(int)input[py * width + px]];
                     }
             }
-            const int n = neighborhood_size(idx, idy, width, height);
-            double ans = mylog[n];
+            const int n = (min(idx, 2) + 1 + min(width - idx, 2)) * (min(idy, 2) + 1 + min(height - idy, 2));
+            double ans = mylog[n], n_inv = 1.0 / n;
             for (int i = 0; i < 16; ++i)
-                ans -= mylog[cnt[i]] * cnt[i] / n;
+                ans -= mylog[cnt[i]] * cnt[i] * n_inv;
             output[idy * width + idx] = ans;
         }
     }
 
-    void cudaCallback(
+    static void cudaCallback(
         int width,
         int height,
         float *sample,
@@ -460,9 +440,9 @@ namespace v4 //cuda 预处理log到device memory
 } // namespace v4
 namespace v5 //cuda 预处理log到texure memory
 {
-    texture<float> mylog_tex;
-    __device__ float mylog[26];
-    struct InitPlogp
+    static texture<float> mylog_tex;
+    static __device__ float mylog[26];
+    static struct InitPlogp
     {
         InitPlogp()
         {
@@ -500,7 +480,7 @@ namespace v5 //cuda 预处理log到texure memory
         }
     } tmpInit;
 
-    __global__ void cudaCallbackKernel(
+    static __global__ void cudaCallbackKernel(
         const int width,
         const int height,
         const float *__restrict__ input,
@@ -522,15 +502,15 @@ namespace v5 //cuda 预处理log到texure memory
                             ++cnt[(int)input[py * width + px]];
                     }
             }
-            const int n = neighborhood_size(idx, idy, width, height);
-            double ans = tex1Dfetch(mylog_tex, n);
+            const int n = (min(idx, 2) + 1 + min(width - idx, 2)) * (min(idy, 2) + 1 + min(height - idy, 2));
+            double ans = tex1Dfetch(mylog_tex, n), n_inv = 1.0 / n;
             for (int i = 0; i < 16; ++i)
-                ans -= tex1Dfetch(mylog_tex, cnt[i]) * cnt[i] / n;
+                ans -= tex1Dfetch(mylog_tex, cnt[i]) * cnt[i] * n_inv;
             output[idy * width + idx] = ans;
         }
     }
 
-    void cudaCallback(
+    static void cudaCallback(
         int width,
         int height,
         float *sample,
@@ -566,7 +546,7 @@ namespace v5 //cuda 预处理log到texure memory
 } // namespace v5
 namespace v6 //cuda 预处理log到寄存器+使用更小的整型类型
 {
-    __global__ void cudaCallbackKernel(
+    static __global__ void cudaCallbackKernel(
         const int width,
         const int height,
         const float *__restrict__ input,
@@ -616,15 +596,15 @@ namespace v6 //cuda 预处理log到寄存器+使用更小的整型类型
                 log(24.0),
                 log(25.0)};
 
-            const signed char n = neighborhood_size(idx, idy, width, height);
-            double ans = mylog[n];
+            const signed char n = (min(idx, 2) + 1 + min(width - idx, 2)) * (min(idy, 2) + 1 + min(height - idy, 2));
+            double ans = mylog[n], n_inv = 1.0 / n;
             for (signed char i = 0; i < 16; ++i)
-                ans -= mylog[cnt[i]] * cnt[i] / n;
+                ans -= mylog[cnt[i]] * cnt[i] * n_inv;
             output[idy * width + idx] = ans;
         }
     }
 
-    void cudaCallback(
+    static void cudaCallback(
         int width,
         int height,
         float *sample,
@@ -660,7 +640,7 @@ namespace v6 //cuda 预处理log到寄存器+使用更小的整型类型
 } // namespace v6
 namespace v7 //cuda 预处理log到寄存器+使用更小的整型类型+使用更小的浮点类型
 {
-    __global__ void cudaCallbackKernel(
+    static __global__ void cudaCallbackKernel(
         const int width,
         const int height,
         const float *__restrict__ input,
@@ -710,15 +690,15 @@ namespace v7 //cuda 预处理log到寄存器+使用更小的整型类型+使用�
                 log(24.0),
                 log(25.0)};
 
-            const signed char n = neighborhood_size(idx, idy, width, height);
-            double ans = mylog[n], inv_n = 1.0 / n;
+            const signed char n = (min(idx, 2) + 1 + min(width - idx, 2)) * (min(idy, 2) + 1 + min(height - idy, 2));
+            double ans = mylog[n], n_inv = 1.0 / n;
             for (signed char i = 0; i < 16; ++i)
-                ans -= mylog[cnt[i]] * inv_n * cnt[i];
+                ans -= mylog[cnt[i]] * n_inv * cnt[i];
             output[idy * width + idx] = ans;
         }
     }
 
-    void cudaCallback(
+    static void cudaCallback(
         int width,
         int height,
         float *sample,
@@ -754,9 +734,9 @@ namespace v7 //cuda 预处理log到寄存器+使用更小的整型类型+使用�
 } // namespace v7
 namespace v8 //cuda 预处理log到寄存器+使用更小的整型类型+使用更小的浮点类型+使用texure memory优化读入
 {
-    texture<float, 2> input_tex;
+    static texture<float, 2> input_tex;
 
-    __global__ void cudaCallbackKernel(
+    static __global__ void cudaCallbackKernel(
         const int width,
         const int height,
         float *__restrict__ output)
@@ -805,15 +785,15 @@ namespace v8 //cuda 预处理log到寄存器+使用更小的整型类型+使用�
                 log(24.0),
                 log(25.0)};
 
-            const signed char n = neighborhood_size(idx, idy, width, height);
-            double ans = mylog[n], inv_n = 1.0 / n;
+            const signed char n = (min(idx, 2) + 1 + min(width - idx, 2)) * (min(idy, 2) + 1 + min(height - idy, 2));
+            double ans = mylog[n], n_inv = 1.0 / n;
             for (signed char i = 0; i < 16; ++i)
-                ans -= mylog[cnt[i]] * inv_n * cnt[i];
+                ans -= mylog[cnt[i]] * n_inv * cnt[i];
             output[idy * width + idx] = ans;
         }
     }
 
-    void cudaCallback(
+    static void cudaCallback(
         int width,
         int height,
         float *sample,
@@ -854,7 +834,7 @@ namespace v9 //cuda 预处理log到寄存器+使用更小的整型类型+使用�
     template <
         int BLOCK_DIM_X,
         int BLOCK_DIM_Y>
-    __global__ void cudaCallbackKernel(
+    static __global__ void cudaCallbackKernel(
         const int width,
         const int height,
         const float *__restrict__ input,
@@ -905,15 +885,15 @@ namespace v9 //cuda 预处理log到寄存器+使用更小的整型类型+使用�
                 log(24.0),
                 log(25.0)};
 
-            const signed char n = neighborhood_size(idx, idy, width, height);
-            double ans = mylog[n], inv_n = 1.0 / n;
+            const signed char n = (min(idx, 2) + 1 + min(width - idx, 2)) * (min(idy, 2) + 1 + min(height - idy, 2));
+            double ans = mylog[n], n_inv = 1.0 / n;
             for (signed char i = 0; i < 16; ++i)
-                ans -= mylog[cnt[i]] * inv_n * cnt[i];
+                ans -= mylog[cnt[i]] * n_inv * cnt[i];
             output[idy * width + idx] = ans;
         }
     }
 
-    void cudaCallback(
+    static void cudaCallback(
         int width,
         int height,
         float *sample,
@@ -951,7 +931,7 @@ namespace v9 //cuda 预处理log到寄存器+使用更小的整型类型+使用�
 } // namespace v9
 namespace v10 //openmp baseline
 {
-    void cudaCallback(
+    static void cudaCallback(
         int width,
         int height,
         float *sample,
@@ -972,17 +952,17 @@ namespace v10 //openmp baseline
                     if (0 <= py && py < height && 0 <= px && px < width)
                         ++cnt[(int)sample[py * width + px]];
                 }
-            double n = neighborhood_size(idx, idy, width, height), ans = log(n);
+            double n = (min(idx, 2) + 1 + min(width - idx, 2)) * (min(idy, 2) + 1 + min(height - idy, 2)), ans = log(n), n_inv = 1.0 / n;
             for (int i = 0; i < 16; ++i)
                 if (cnt[i])
-                    ans -= log((double)cnt[i]) * cnt[i] / n;
+                    ans -= log((double)cnt[i]) * cnt[i] * n_inv;
             (*result)[pos] = ans;
         }
     }
 } // namespace v10
 namespace v11 //openmp 预处理log到寄存器
 {
-    void cudaCallback(
+    static void cudaCallback(
         int width,
         int height,
         float *sample,
@@ -1030,17 +1010,17 @@ namespace v11 //openmp 预处理log到寄存器
                 log(23.0),
                 log(24.0),
                 log(25.0)};
-            const int n = neighborhood_size(idx, idy, width, height);
-            double ans = mylog[n], inv_n = 1.0 / n;
+            const int n = (min(idx, 2) + 1 + min(width - idx, 2)) * (min(idy, 2) + 1 + min(height - idy, 2));
+            double ans = mylog[n], n_inv = 1.0 / n;
             for (int i = 0; i < 16; ++i)
-                ans -= mylog[cnt[i]] * inv_n * cnt[i];
+                ans -= mylog[cnt[i]] * n_inv * cnt[i];
             (*result)[pos] = ans;
         }
     }
 } // namespace v11
 namespace v12 //openmp 预处理log到寄存器+使用更小的类型
 {
-    void cudaCallback(
+    static void cudaCallback(
         int width,
         int height,
         float *sample,
@@ -1088,17 +1068,17 @@ namespace v12 //openmp 预处理log到寄存器+使用更小的类型
                 log(23.0),
                 log(24.0),
                 log(25.0)};
-            const signed char n = neighborhood_size(idx, idy, width, height);
-            double ans = mylog[n], inv_n = 1.0 / n;
+            const signed char n = (min(idx, 2) + 1 + min(width - idx, 2)) * (min(idy, 2) + 1 + min(height - idy, 2));
+            double ans = mylog[n], n_inv = 1.0 / n;
             for (signed char i = 0; i < 16; ++i)
-                ans -= mylog[cnt[i]] * inv_n * cnt[i];
+                ans -= mylog[cnt[i]] * n_inv * cnt[i];
             (*result)[pos] = ans;
         }
     }
 } // namespace v12
 namespace v13 //openmp 预处理log到寄存器+使用更小的类型+预处理前缀和
 {
-    void cudaCallback(
+    static void cudaCallback(
         int width,
         int height,
         float *sample,
@@ -1158,12 +1138,12 @@ namespace v13 //openmp 预处理log到寄存器+使用更小的类型+预处理�
                 log(23.0),
                 log(24.0),
                 log(25.0)};
-            const signed char n = neighborhood_size(idx, idy, width, height);
-            double ans = mylog[n], inv_n = 1.0 / n;
+            const signed char n = (min(idx, 2) + 1 + min(width - idx, 2)) * (min(idy, 2) + 1 + min(height - idy, 2));
+            double ans = mylog[n], n_inv = 1.0 / n;
             for (signed char i = 0; i < 16; ++i)
             {
                 const signed char cnti = sum[i][(idy + 5) * (width + 5) + idx + 5] - sum[i][(idy + 5) * (width + 5) + idx] - sum[i][idy * (width + 5) + idx + 5] + sum[i][idy * (width + 5) + idx];
-                ans -= mylog[cnti] * inv_n * cnti;
+                ans -= mylog[cnti] * n_inv * cnti;
             }
             (*result)[pos] = ans;
         }
@@ -1171,50 +1151,50 @@ namespace v13 //openmp 预处理log到寄存器+使用更小的类型+预处理�
             free(sum[i]);
     }
 } // namespace v13
-namespace v14
+namespace v14 //cuda+openmp 多卡，基于v7、v9、v11
 {
-    void cudaCallback(
+    static void cudaCallback(
         int width,
         int height,
         float *sample,
         float **result)
     {
         int num_threads = 0;
-        cudaGetDeviceCount(&num_threads);
+        CHECK(cudaGetDeviceCount(&num_threads));
         if (num_threads > height - 4)
             num_threads = height - 4;
         if (num_threads < 1)
             return v11::cudaCallback(width, height, sample, result);
-        if (num_threads < 2 || width * height < 1e6)
+        if (num_threads < 2 || width * height < 1e7)
             return v7::cudaCallback(width, height, sample, result);
         *result = (float *)malloc(sizeof(float) * width * height);
 #pragma omp parallel num_threads(num_threads)
         {
             int thread_num = omp_get_thread_num(),
-                thread_len = (height - 4) / num_threads,
-                thread_beg = thread_len * thread_num + 2;
+                thread_hgt = (height - 4) / num_threads,
+                thread_beg = thread_hgt * thread_num + 2;
             if (thread_num == num_threads - 1)
-                thread_len = height - thread_beg - 2;
+                thread_hgt = height - 2 - thread_beg;
             float *thread_result;
-            cudaSetDevice(thread_num);
+            CHECK(cudaSetDevice(thread_num));
             v9::cudaCallback(
                 width,
-                thread_len + 4,
+                thread_hgt + 4,
                 sample + width * (thread_beg - 2),
                 &thread_result);
             memcpy(
-                result + width * thread_beg,
+                (*result) + width * thread_beg,
                 thread_result + width * 2,
-                sizeof(float) * thread_len);
+                sizeof(float) * width * thread_hgt);
             if (thread_num == 0)
                 memcpy(
-                    result,
+                    *result,
                     thread_result,
                     sizeof(float) * width * 2);
             if (thread_num == num_threads - 1)
                 memcpy(
-                    result + width * (height - 2),
-                    thread_result + width * (thread_len - 2),
+                    (*result) + width * (height - 2),
+                    thread_result + width * (thread_hgt + 2),
                     sizeof(float) * width * 2);
             free(thread_result);
         }
