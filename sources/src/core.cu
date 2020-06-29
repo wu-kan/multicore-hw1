@@ -1209,7 +1209,7 @@ struct WarmUP
 {
     WarmUP(int W, int H)
     {
-        void(*cudaCallback)[](int, int, float *, float **) = {
+        void (*cudaCallback[])(int, int, float *, float **) = {
             v0::cudaCallback,
             v1::cudaCallback,
             v2::cudaCallback,
@@ -1248,7 +1248,7 @@ struct Benchmark
 {
     Benchmark(int W, int H)
     {
-        void(*cudaCallback)[](int, int, float *, float **) = {
+        void (*cudaCallback[])(int, int, float *, float **) = {
             v0::cudaCallback,
             v1::cudaCallback,
             v2::cudaCallback,
