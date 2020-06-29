@@ -3,8 +3,8 @@
 #PBS -j oe
 #PBS -q gpu
 
-source /public/software/profile.d/cuda10.0.sh
-cd $PBS_O_WORKDIR
+# source /public/software/profile.d/cuda10.0.sh
+# cd $PBS_O_WORKDIR
 
 mkdir -p sources/bin
 cd sources/bin
