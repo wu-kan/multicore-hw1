@@ -1268,7 +1268,7 @@ struct Benchmark
 #pragma omp parallel for
         for (int i = 0; i < W * H; ++i)
             sample[i] = rand() & 15;
-        print("\n\nStart benchmark with matrix size %d * %d:\n\n", W, H);
+        printf("\n\nStart benchmark with matrix size %d * %d:\n\n", W, H);
         for (int i = 0; i < sizeof(cudaCallback) / sizeof(cudaCallback[0]); ++i)
         {
             float *result;
@@ -1288,9 +1288,9 @@ struct Benchmark
             printf("Version %d: %fms\n", i, elapsed_time);
             free(result);
         }
-        print("\n\nFinish benchmark with matrix size %d * %d.\n\n", W, H);
+        printf("\n\nFinish benchmark with matrix size %d * %d.\n\n", W, H);
         free(sample);
     }
 };
 static WarmUP warm_up(1, 1);
-static Benchmark warm_up(1024, 1024);
+static Benchmark benchmark(1024, 1024);
