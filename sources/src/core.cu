@@ -1165,7 +1165,7 @@ namespace v14 //cuda+openmp 多卡，基于v7、v9、v11
             num_threads = height - 4;
         if (num_threads < 1)
             return v11::cudaCallback(width, height, sample, result);
-        if (num_threads < 2 || width * height < 1e7)
+        if (num_threads < 2 || width * height < 1e5)
             return v7::cudaCallback(width, height, sample, result);
         *result = (float *)malloc(sizeof(float) * width * height);
 #pragma omp parallel num_threads(num_threads)
@@ -1182,20 +1182,17 @@ namespace v14 //cuda+openmp 多卡，基于v7、v9、v11
                 thread_hgt + 4,
                 sample + width * (thread_beg - 2),
                 &thread_result);
-            memcpy(
-                (*result) + width * thread_beg,
-                thread_result + width * 2,
-                sizeof(float) * width * thread_hgt);
+            float
+                *dst = (*result) + width * thread_beg,
+                *src = thread_result + width * 2;
             if (thread_num == 0)
-                memcpy(
-                    *result,
-                    thread_result,
-                    sizeof(float) * width * 2);
+                dst -= width * 2, src -= width * 2, thread_ght += 2;
             if (thread_num == num_threads - 1)
-                memcpy(
-                    (*result) + width * (height - 2),
-                    thread_result + width * (thread_hgt + 2),
-                    sizeof(float) * width * 2);
+                thread_ght += 2;
+            memcpy(
+                dst,
+                src,
+                sizeof(float) * width * thread_hgt);
             free(thread_result);
         }
     }
