@@ -1212,6 +1212,7 @@ struct WarmUP
     WarmUP()
     {
         sample = (float *)malloc(sizeof(float) * W * H);
+#pragma omp parallel for
         for (int i = 0; i < W * H; ++i)
             sample[i] = rand() & 15;
         lauch_function(v0::cudaCallback);
@@ -1244,4 +1245,54 @@ struct WarmUP
         }
     }
 };
-static WarmUP<1, 1> WarmUp;
+static WarmUP<1, 1> warm_up;
+template <int W, int H>
+struct Benchmark
+{
+    Benchmark()
+    {
+        void(*cudaCallback)[](int, int, float *, float **) = {
+            v0::cudaCallback,
+            v1::cudaCallback,
+            v2::cudaCallback,
+            v3::cudaCallback,
+            v4::cudaCallback,
+            v5::cudaCallback,
+            v6::cudaCallback,
+            v7::cudaCallback,
+            v8::cudaCallback,
+            v9::cudaCallback,
+            v10::cudaCallback,
+            v11::cudaCallback,
+            v12::cudaCallback,
+            v13::cudaCallback,
+            v14::cudaCallback};
+        float *sample = (float *)malloc(sizeof(float) * W * H);
+#pragma omp parallel for
+        for (int i = 0; i < W * H; ++i)
+            sample[i] = rand() & 15;
+        print("\n\nStart benchmark with matrix size %d * %d:\n\n", W, H);
+        for (int i = 0; i < sizeof(cudaCallback) / sizeof(cudaCallback[0]); ++i)
+        {
+            float *result;
+            cudaEvent_t beg, end;
+            cudaEventCreate(&beg);
+            cudaEventCreate(&end);
+            cudaEventRecord(beg);
+            cudaCallback(W, H, sample, &result);
+            cudaEventRecord(end);
+            cudaEventSynchronize(beg);
+            cudaEventSynchronize(end);
+            float elapsed_time;
+            cudaEventElapsedTime(
+                &elapsed_time,
+                beg,
+                end);
+            printf("Version %d: %fms\n", i, elapsed_time);
+            free(result);
+        }
+        print("\n\nFinish benchmark with matrix size %d * %d.\n\n", W, H);
+        free(sample);
+    }
+};
+static Benchmark<1000, 1000> warm_up;
