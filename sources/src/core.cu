@@ -1186,9 +1186,9 @@ namespace v14 //cuda+openmp 多卡，基于v7、v9、v11
                 *dst = (*result) + width * thread_beg,
                 *src = thread_result + width * 2;
             if (thread_num == 0)
-                dst -= width * 2, src -= width * 2, thread_ght += 2;
+                dst -= width * 2, src -= width * 2, thread_hgt += 2;
             if (thread_num == num_threads - 1)
-                thread_ght += 2;
+                thread_hgt += 2;
             memcpy(
                 dst,
                 src,
