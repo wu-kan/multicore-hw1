@@ -1159,21 +1159,21 @@ namespace v14 //cuda+openmp 多卡，基于v7、v9、v11
         float *sample,
         float **result)
     {
-        int num_threads = 0;
-        CHECK(cudaGetDeviceCount(&num_threads));
-        if (num_threads > height - 4)
-            num_threads = height - 4;
-        if (num_threads < 1)
+        int num_gpus = 0;
+        CHECK(cudaGetDeviceCount(&num_gpus));
+        if (num_gpus > height - 4)
+            num_gpus = height - 4;
+        if (num_gpus < 1)
             return v11::cudaCallback(width, height, sample, result);
-        if (num_threads < 2 || width * height < 1e5)
+        if (num_gpus < 2 || width * height < 1e5)
             return v7::cudaCallback(width, height, sample, result);
         *result = (float *)malloc(sizeof(float) * width * height);
-#pragma omp parallel num_threads(num_threads)
+#pragma omp parallel num_threads(num_gpus)
         {
             int thread_num = omp_get_thread_num(),
-                thread_hgt = (height - 4) / num_threads,
+                thread_hgt = (height - 4) / num_gpus,
                 thread_beg = thread_hgt * thread_num + 2;
-            if (thread_num == num_threads - 1)
+            if (thread_num == num_gpus - 1)
                 thread_hgt = height - 2 - thread_beg;
             float *thread_result;
             CHECK(cudaSetDevice(thread_num));
@@ -1187,7 +1187,7 @@ namespace v14 //cuda+openmp 多卡，基于v7、v9、v11
                 *src = thread_result + width * 2;
             if (thread_num == 0)
                 dst -= width * 2, src -= width * 2, thread_hgt += 2;
-            if (thread_num == num_threads - 1)
+            if (thread_num == num_gpus - 1)
                 thread_hgt += 2;
             memcpy(
                 dst,
@@ -1205,3 +1205,43 @@ void cudaCallback(
 {
     v14::cudaCallback(width, height, sample, result);
 }
+template <int W, int H>
+struct WarmUP
+{
+    float *sample;
+    WarmUP()
+    {
+        sample = (float *)malloc(sizeof(float) * W * H);
+        for (int i = 0; i < W * H; ++i)
+            sample[i] = rand() & 15;
+        lauch_function(v0::cudaCallback);
+        lauch_function(v1::cudaCallback);
+        lauch_function(v2::cudaCallback);
+        lauch_function(v3::cudaCallback);
+        lauch_function(v4::cudaCallback);
+        lauch_function(v5::cudaCallback);
+        lauch_function(v6::cudaCallback);
+        lauch_function(v7::cudaCallback);
+        lauch_function(v8::cudaCallback);
+        lauch_function(v9::cudaCallback);
+        lauch_function(v10::cudaCallback);
+        lauch_function(v11::cudaCallback);
+        lauch_function(v12::cudaCallback);
+        lauch_function(v13::cudaCallback);
+        free(sample);
+    }
+    void lauch_function(*cudaCallback(int, int, float *, float **))
+    {
+        int num_gpus = 0;
+        CHECK(cudaGetDeviceCount(&num_gpus));
+#pragma omp parallel num_threads(num_gpus)
+        {
+            float *result;
+            int thread_num = omp_get_thread_num();
+            CHECK(cudaSetDevice(thread_num));
+            cudaCallback(W, H, sample, &result);
+            free(result);
+        }
+    }
+};
+static WarmUP<1, 1> WarmUp;
