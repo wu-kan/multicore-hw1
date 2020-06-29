@@ -1230,7 +1230,7 @@ struct WarmUP
         lauch_function(v13::cudaCallback);
         free(sample);
     }
-    void lauch_function(*cudaCallback(int, int, float *, float **))
+    void lauch_function(void *cudaCallback(int, int, float *, float **))
     {
         int num_gpus = 0;
         CHECK(cudaGetDeviceCount(&num_gpus));
