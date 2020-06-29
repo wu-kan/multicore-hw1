@@ -1205,51 +1205,48 @@ void cudaCallback(
 {
     v14::cudaCallback(width, height, sample, result);
 }
-template <int W, int H>
 struct WarmUP
 {
-    float *sample;
-    WarmUP()
+    WarmUP(int W, int H)
     {
-        sample = (float *)malloc(sizeof(float) * W * H);
+        void(*cudaCallback)[](int, int, float *, float **) = {
+            v0::cudaCallback,
+            v1::cudaCallback,
+            v2::cudaCallback,
+            v3::cudaCallback,
+            v4::cudaCallback,
+            v5::cudaCallback,
+            v6::cudaCallback,
+            v7::cudaCallback,
+            v8::cudaCallback,
+            v9::cudaCallback,
+            v10::cudaCallback,
+            v11::cudaCallback,
+            v12::cudaCallback,
+            v13::cudaCallback};
+        float *sample = (float *)malloc(sizeof(float) * W * H);
 #pragma omp parallel for
         for (int i = 0; i < W * H; ++i)
             sample[i] = rand() & 15;
-        lauch_function(v0::cudaCallback);
-        lauch_function(v1::cudaCallback);
-        lauch_function(v2::cudaCallback);
-        lauch_function(v3::cudaCallback);
-        lauch_function(v4::cudaCallback);
-        lauch_function(v5::cudaCallback);
-        lauch_function(v6::cudaCallback);
-        lauch_function(v7::cudaCallback);
-        lauch_function(v8::cudaCallback);
-        lauch_function(v9::cudaCallback);
-        lauch_function(v10::cudaCallback);
-        lauch_function(v11::cudaCallback);
-        lauch_function(v12::cudaCallback);
-        lauch_function(v13::cudaCallback);
+        for (int i = 0; i < sizeof(cudaCallback) / sizeof(cudaCallback[0]); ++i)
+        {
+            int num_gpus = 0;
+            CHECK(cudaGetDeviceCount(&num_gpus));
+#pragma omp parallel num_threads(num_gpus)
+            {
+                float *result;
+                int thread_num = omp_get_thread_num();
+                CHECK(cudaSetDevice(thread_num));
+                cudaCallback[i](W, H, sample, &result);
+                free(result);
+            }
+        }
         free(sample);
     }
-    void lauch_function(void (*cudaCallback)(int, int, float *, float **))
-    {
-        int num_gpus = 0;
-        CHECK(cudaGetDeviceCount(&num_gpus));
-#pragma omp parallel num_threads(num_gpus)
-        {
-            float *result;
-            int thread_num = omp_get_thread_num();
-            CHECK(cudaSetDevice(thread_num));
-            cudaCallback(W, H, sample, &result);
-            free(result);
-        }
-    }
 };
-static WarmUP<1, 1> warm_up;
-template <int W, int H>
 struct Benchmark
 {
-    Benchmark()
+    Benchmark(int W, int H)
     {
         void(*cudaCallback)[](int, int, float *, float **) = {
             v0::cudaCallback,
@@ -1279,7 +1276,7 @@ struct Benchmark
             cudaEventCreate(&beg);
             cudaEventCreate(&end);
             cudaEventRecord(beg);
-            cudaCallback(W, H, sample, &result);
+            cudaCallback[i](W, H, sample, &result);
             cudaEventRecord(end);
             cudaEventSynchronize(beg);
             cudaEventSynchronize(end);
@@ -1295,4 +1292,5 @@ struct Benchmark
         free(sample);
     }
 };
-static Benchmark<1000, 1000> warm_up;
+static WarmUP warm_up(1, 1);
+static Benchmark warm_up(1024, 1024);
