@@ -1,10 +1,14 @@
 # multicore hw1 scaffold
 
-| 学校     | 学院                 | 专业                         | 年级 | 学号     | 姓名 |
-| -------- | -------------------- | ---------------------------- | ---- | -------- | ---- |
-| 中山大学 | 数据科学与计算机学院 | 计算机科学与技术（超算方向） | 17   | 17341163 | 吴坎 |
+<style>
+html body{
+    font-family: 华文中宋
+}
+</style>
 
-## 实验简介
+|   学校   |         学院         |             专业             | 年级 |   学号   | 姓名 |
+| :------: | :------------------: | :--------------------------: | :--: | :------: | :--: |
+| 中山大学 | 数据科学与计算机学院 | 计算机科学与技术（超算方向） |  17  | 17341163 | 吴坎 |
 
 按照公式 $H(X)=-\sum_ip(X=x_i)\log p(X=x_i)$ 计算二维数组中以每个元素为中心的熵：
 
@@ -15,11 +19,22 @@
   - 每个元素值为输入数组中对应位置为中心大小为五的窗口中值的熵
   - 边界窗口只考虑数组内的值
 
-实验中分别在 CUDA（单卡）、OPENMP、OPENMP+CUDA（四卡）三种计算环境上实现了上述实验要求，并实现了若干种优化版本进行对比。由于提供的最大的样例输入大小只有 $2560\times 2560$ 这一数量级，并没有完全发挥多核计算环境的优势，我也随机构造了一组 $40000\times 40000$ 大小的输入对程序进行了测试。最终在实验结果的基础上总结得到了一些影响 CUDA、OPENMP 程序性能的因素。
+实验中分别在 CUDA（单卡）、OPENMP、OPENMP+CUDA（四卡）三种计算环境上实现了上述实验要求，并实现了若干种优化版本进行对比。由于提供的最大的样例输入大小只有 $2560\times 2560$ 这一数量级，并没有完全发挥多核计算环境的优势，我也分别构造了三组大小分别为 $400\times 400$、$2560\times 2560$、$10240\times 10240$ 的输入对程序进行了 benchmark 测试。最终在实验结果的基础上总结得到了一些影响本次程序性能的因素。
 
-## 实验原理
+如果要运行我的实验程序，可以终端直接在当前目录运行如下指令：
 
-我分别在 CUDA 上实现了 v0~v9 版本、OPENMP 上实现了 v10~v12 版本、OPENMP+CUDA 实现了 v13 版本。不同版本使用 namespace 进行封装，除了 v13 版本复用了 v9、v11 版本之外，各命名空间互不干扰，没有冲突。这样做既方便了代码复用，也方便横向对比各个版本之间的性能差异。
+```bash
+#chmod 777 ./RUNME.sh # 可解决有时出现文件权限错误的问题
+./RUNME.sh | tee screen.log
+```
+
+该条语句会自动编译并运行实验结果，同时保存屏幕日志到 `screen.log` 文件中。我的运行结果可以直接看当前目录下的 `screen.log`
+
+[toc]
+
+## 介绍程序整体逻辑，包含的函数，每个函数完成的内容。对于核函数，应该说明每个线程块及每个线程所分配的任务
+
+我分别使用 CUDA 实现了 v0\~v9 版本、OPENMP 实现了 v10\~v13 版本、OPENMP+CUDA 实现了 v14 版本。不同版本使用 namespace 进行封装，除了 v14 版本复用了 v7、v12 版本之外，各命名空间互不干扰，没有冲突。这样做既方便了代码复用，也方便横向对比各个版本之间的性能差异。如下，如果要在它们之间进行切换，只需要修改 `sources/src/core.cu` 最后几行 `cudaCallback` 函数中实际调用的版本即可。
 
 ```cpp
 void cudaCallback(
@@ -28,88 +43,268 @@ void cudaCallback(
     float *sample,
     float **result)
 {
-    v13::cudaCallback(width, height, sample, result);
+    v14::cudaCallback(width, height, sample, result);
 }
 ```
 
-如上，如果要在它们之间进行切换，只需要修改 `sources/src/core.cu` 最后几行 `cudaCallback` 函数中实际调用的版本即可。
+对于 v0\~v9 版本来说，每个命名空间里仅包含两个函数：`cudaCallback` 函数是外部调用的接口，`cudaCallbackKernel` 函数是其调用的核函数。
 
-### CUDA（单卡）
+对于 v10\~v14 版本来说，每个命名空间里仅包含一个函数 `cudaCallback` 作为外部调用的接口。虽然里面的内容实质上与 cuda 不怎么相关，但是还是保持了命名上的一致性。
 
-首先我实现了 baseline 版本（v0），将线程一一映射到对应位置上，每个线程计算一个位置的熵值。每个线程块在逻辑上没有额外的任务。
+v14 版本是最后得到的最优版本。
 
-由于我们的窗口大小仅为 25，因此在公式 $H(X)=-\sum_ip(X=x_i)\log p(X=x_i)$ 中，$p(X=x_i)\in\{\frac{0}{25},\frac{01}{25},\ldots,\frac{25}{25}\}$，实际的对数运算范围是有限的，我们可以使用查表来优化这一过程。我针对 $p\in\{\frac{0}{25},\frac{01}{25},\ldots,\frac{25}{25}\}$ 预计算了 $p\log p$ 表（$p=0$ 时值为 0）。
+### v0
 
-$p\log p$ 表建好了，可是应该存在哪里呢？我依次考虑了如下几种情况：
+v0 版本是 cuda 版本的 baseline。实现的逻辑非常简单粗暴：将各个线程按照二维方式组织和分块，线程一一映射到对应位置上，每个线程使用串行方法计算一个位置的熵值。每个线程块在逻辑上没有额外的任务。
 
-1. 直接存在 register（v1）
-   - 通过检查编译生成的 `.ptx` 汇编文件，可以发现其值在编译时就已经计算完成
-   - 但是发现相对于 baseline 没有明显变化
-   - 猜测每个线程都保存大小为 26 的表增加了单个线程的寄存器压力，降低了能够同时运行的线程数量
-2. 存在 shared memory（v2）
-   - 使用 shared memory，在同一个线程块之内共享这张表
-   - 相对于 baseline 没有明显变化
-   - 猜测原因是，需要在运行时由对应位置的线程计算，超出部分的线程空转
-3. 存在 constant memory（v3）
-   - 由于 $p\log p$ 是常数表，很自然地想到为此而生的 constant memory
-   - 对 constant memory 的单次读操作可以广播到同个半线程束的其他$15$个线程，这种方式产生的内存流量只是使用全局内存时的$\frac{1}{16}$
-   - 硬件将主动把 constant memory 缓存在 GPU 上。在第一次从常量内存的某个地址上读取后，当其他半线程束请求同一个地址时，那么将命中缓存，这同样减少了额外的内存流量
-   - 相对于 baseline 没有明显变化
-   - 我猜测原因是，对于相邻的两个线程，他们特定元素需要访问的概率并不一定相同，因此很难命中 constant memory 的缓存
-4. 存在 device memory（v4）
-   - 相对于 baseline 没有明显变化
-   - 显然就读取速度来看 device memory（此处指 global memory）肯定不会快于 constant memory
-   - 但是这个版本可以为下一版本做铺垫
-5. 存在 texure memory（v5）
-   - 直接将 v4 版本中的 device memory 绑定 texure 进行访问
-   - texure memory 不需要满足 global memory 的合并访问条件也可以优化邻域上的数据读取
-   - CUDA 还有一种 surface memory，相当于带写操作的 texure memory，这里不再尝试了
-   - 相对于 baseline，在 $2560\times 2560$ 规模的输入上平均提高了大约 16% 的性能。
-   - 我猜测原因是，由于这个表大小仅为 26，访问 texure memory 时很容易就把表的其他值传给了附近的线程，从而减少了内存流量，也没有带来过大的寄存器压力（因为不是所有线程都获得了整个表）。
+![version0]
 
-到了 v5 版本终于有了一点提升，但是 v5 版本有一个缺点：texure memory 仅支持绑定 `float`（或 `int`）这种四个字节大小的类型。在 v0~v4 版本中，为了保证计算时答案的精度，我都是使用了混合精度的计算方式，即以 `double` 作为运算的类型，最后保存结果时再降成 `float` 型。虽然 `float` 类型本身有 7 位有效数字，但是如果作为计算的中间类型还是会给结果带来一定的舍入误差，就我在测试数据上的结果来看会和之前的结果产生十万分之一的误差，不能满足要求的小数点后五位。当然，我也可以使用 texure 读入两个四字节变量再用强制类型转换将其合成一个 double，但是这样又会增加类型转换的开销，一来一去就得不偿失了；此外，我也尝试将 v0~v4 的中间类型改成`float`，结果并没有提升，这说明不是由于换了中间类型导致的加速。
+上图可以描述运行中某两个线程的工作情况。每个线程读入自身及周围邻域的元素值（图中实线表示的区域），写出到输出矩阵对应位置（图中内层虚线表示的区域）。
 
-虽然 v5 版本存在一定误差，但是为我 v6 版本的优化提供了新的思路：猜测使用的寄存器类型可能会对运行时间有影响。注意到之前的版本，我统计每个数出现次数的计数器类型是四字节大小的 `int` ，我将其换成了单字节的 `signed char`（因为出现次数最多 25，signed char 有效范围是-128~127 完全足够了）。结果效果非常明显：核函数的运行时间减少了一倍还多！这说明之前寄存器的压力确实特别大。
+### v1
 
-那么在 v6 版本降低了寄存器的压力之后，v1~v5 版本预处理 $p\log p$ 的策略是否会有效果呢？经过实验发现还是没有明显效果，甚至于使用 texure memory 也不再有效果。这说明显卡上单个线程计算的速度是要远快于访问内存的速度的，此时这个程序的瓶颈不再在计算 $\log$ 函数上了（一组线程在访存时可以挂起，切换到其他已经访存完毕开始计算的线程上）。于是得到了不预处理 $p\log p$ 的版本 v7，解决了 v5 版本的误差问题。
+v1 版本在 v0 版本的基础上预处理了整数 $[0,25]$ 范围内的对数表（原理见下），并直接保存在寄存器上。
 
-至此关于 $\log$ 函数的优化方式已经全部完毕（或者说都没有效果）。分析一下当前的程序，对于输入的数组需要读 25 次，然后计算后将结果写（1 次）到输出数组上。由于将答案写到输出数组上的过程显然是必要的，接下来考虑对输入数组读取的过程进行优化。
+### v2
 
-首先是和 v5 版本一样，尝试使用 texure memory 进行优化，得到版本 v8。然而并没有效果，这是显然的：因为对输入数组的访问都是合并访存，texure memory 在这种情况下并不能提供加速（因为本身已经很快了）。
+v2 版本同样在 v0 版本的基础上预处理了对数表，但是对数表保存在 shared memory 中。
 
-然后考虑用 shared memory 进行读入部分的优化，得到版本 v9。在这个版本里，单个线程块的大小为 $32\times 32$，每次计算 $28\times 28$ 大小的矩阵（边界宽度为 2 的环的熵并非最后答案的熵）。虽然访存流量已经几乎减少到原来的二十五分之一，但是在 $2560\times 2560$ 规模上仍然没有提升！这是为什么呢？实际上，根据我在[nvidia 官网上的数据](https://www.nvidia.cn/data-center/v100/)，实验使用的显卡 tesla-v100 带宽高达 900GB /S，而 $2560\times 2560$ 大小的矩阵只有 26.2144MB，理论上只需要不到 0.03ms 就可以完全读入（实际上会有差距，因为不是单次读入），因此输入数据完全没跑满显卡的带宽。于是我在后续的实验中也构造了大小为 $40000\times 40000$ 的输入对程序性能进行测试，可以看到此版本有最优的渐进表现！
+### v3
 
-此处每个版本仅包含一个 `cudaCallback` 函数和对应的 `cudaCallbackKernel` 核函数。
+v3 版本同样在 v0 版本的基础上预处理了对数表，但是对数表保存在 constant memory 中。
 
-### OPENMP
+### v4
 
-OPENMP 版本与 CUDA 版本稍微不同。一方面，CPU 相对于 GPU 有更大的 $\frac{T_{计算}}{T_{访存}}$ 比，因此内存的访问不再是瓶颈；另一方面，CPU 能够同时调度的线程数（核数）远小于 GPU，但是单个线程有更多的寄存器和更长的流水线。因此 OPENMP 版本代码中优化策略的选择和效果与 CUDA 版本有区别。
+v4 版本同样在 v0 版本的基础上预处理了对数表，但是对数表保存在 device memory 中。
 
-首先，我使用和 CUDA baseline 同样的算法实现了 OPENMP 版本的 baseline（v10），每次循环迭代计算一个位置的熵值。
+### v5
 
-随后，我预处理了大小为 26 的 $p\log p$ 表，使用查表加速了计算过程（v11）。
+v5 版本在 v4 版本的基础上使用 texture memory 加速对数表的读取。
 
-最后，我也针对 OPENMP 重新设计了一个算法（v12）：针对 $x=X_i,i\in[0,15]$ 分别线性预处理 16 个二维前缀和：$S_{a,b}=\sum_{p=0}^a\sum_{q=0}^b[x_{p,q}==X_i]$，这样要检索一个 $5\times 5$ 的窗口中特定元素的出现次数只需要四次访存即可：$S_{a+5,b+5}-S_{a+5,b}-S_{a,b+5}+S_{a,b}$。当然，由于本问题中变量的值域有 16 个元素，实际上总的访存次数 $16\times 4=64$ 是要超过 baseline 版本的 25 次的。但是，当问题的窗口变得更大（例如 $9\times 9$），或是变量的值域变小的时候，此算法因为有更低的时间复杂度而值得期待。
+### v6
 
-此处每个版本仅包含一个 `cudaCallback` 函数。
+v6 版本在 v1 版本上换用更小的 `signed char` 类型代替 `int` 型作为计数器。
 
-### OPENMP+CUDA（四卡）
+### v7
 
-由于提供的实验环境中有四张显卡，只使用其中的一张显卡未免过于浪费，于是考虑使用多张显卡对程序进行加速。
+v7 版本在 v6 版本的基础上，使用更小的 `float` 类型来存储对数表，但是计算时使用 `double` 类型进行计算（即混合精度）。
+
+### v8
+
+v8 版本在 v7 版本的基础上，使用 2D texture memory 加速输入矩阵的读取。
+
+### v9
+
+v9 版本在 v7 版本的基础上，使用 shared memory 加速输入矩阵的读取。在这个版本里，单个线程块的大小为 $32\times 32$，每次计算 $28\times 28$ 大小的矩阵（边界宽度为 2 的环的熵并非最后答案的熵）。
+
+![version9]
+
+上图等比例地反映了四个空间上相邻的 block 所分到的任务。其中，不同元素的实线代表每个线程块实际读取的范围，虚线代表实际写出的范围。要注意的是上面实线虚线之间会有覆盖，但是不同矩形实际对应空间是能够明显区分的。
+
+### v10
+
+v10 版本是 openmp 版本的 baseline，其原理和 v0 版本相同，一次循环迭代计算输出矩阵一个位置的元素。由于循环之间没有依赖关系，可以直接用 `#pragma omp parallel for` 并行化。
+
+### v11
+
+v11 版本类似于 v1 版本，在 v10 版本的基础上预处理对数表到寄存器。
+
+### v12
+
+v12 版本类似于 v7 版本，使用混合精度加速计算过程。
+
+### v13
+
+v13 版本在 v12 版本的基础上预处理二维前缀和，降低统计各元素出现次数的时间复杂度。
+
+具体来说，我针对 $X=x_i,i\in[0,15]$ 分别线性预处理 16 个二维前缀和：$S_{a,b}=\sum_{p=0}^a\sum_{q=0}^b[X_{p,q}==x_i]$。
+
+![version13]
+
+如上，红色面积为 $S_{a,b}$，红+黄部分面积总和为 $S_{a+5,b}$，红+蓝部分面积总和为 $S_{a,b+5}$，红黄蓝绿四部分面积总和为 $S_{a+5,b+5}$。这样要检索一个 $5\times 5$ 的绿色窗口中特定元素的出现次数只需要四次访存即可：$S_{a+5,b+5}-S_{a+5,b}-S_{a,b+5}+S_{a,b}$。
+
+当然，由于本问题中变量的值域有 16 个元素，实际上总的访存次数 $16\times 4=64$ 是要超过 baseline 版本的 25 次的。但是，当问题的窗口变得更大（例如 $9\times 9$），或是变量的值域变小的时候，此算法因为有更低的时间复杂度而值得期待。
+
+### v14
+
+v14 版本使用了 OPENMP+CUDA。由于提供的实验环境中有四张显卡，只使用其中的一张显卡未免过于浪费，于是考虑使用多张显卡对程序进行加速。
 
 对于这个程序来说，要使用多张显卡对程序进行加速，我有大致如下两个思路：
 
-1. 任务并行，每张显卡负责计算不同的 $x=X_i$ 对于答案的贡献，然后使用多卡上的 Reduce 算法将其汇总
-2. 数据并行，每张显卡计算答案的一个部分
+1. 任务并行，每张显卡负责计算不同的 $X=x_i$ 对于答案的贡献，然后使用多卡上的 Reduce 算法将其汇总
+2. 数据并行，每张显卡计算答案矩阵的一个部分
 
-我选择使用第二个思路（v13），从而可以直接复用之前单卡的版本，只需要特殊处理一下边界即可。我按照 height 将输入划分成四个子问题，随后将其传给单卡版本（v9）。这样划分的好处是无需对输入数据重新打包，只需要相对于初始地址计算不同的偏移量。
+我选择使用第二个思路，从而可以直接复用之前单卡的版本，只需要特殊处理一下边界即可。我按照 height 将输入划分成四个子问题，随后多线程调用最佳的单卡版本（v7）进行计算（每个线程绑定不同的显卡）。
 
-同时，为了避免在小数据上使用多卡带来过大的并行开销，这个多卡版本在小数据时会直接调用 OPENMP 版本（v11）。得益于对之前单卡版本和 OPENMP 版本的代码复用，多卡版本只用了非常少的代码（50 行以内）就完成了数据并行，还是非常划算的。
+![version14]
 
-此处仅包含一个 `cudaCallback` 函数。
+如上，四种颜色代表每张显卡实际划分到的任务区间，虚线代表实际划分到任务中有效的部分，注意到边界处有高为 2 的重叠部分。这样划分的好处是无需对输入数据重新打包，只需要相对于初始地址计算不同的偏移量。
 
-## 实验环境
+根据官网上查到的数据，我们集群使用的 Tesla V100 有 80 个 SM，每个 SM 最多同时有 2048 个活跃线程。因此，使用多于 $80\times 2048=163840$ 个线程的时候能够使显卡满载。于是在输入的数据数量小于 $163840$ 的时候（当然，没有显卡的时候也会）直接调用表现更佳的 OPENMP 版本。经测试结果来看，这个界限的划分是比较合理的。
 
-## 实验结果
+得益于对之前 CUDA 单卡版本和 OPENMP 版本的代码复用，多卡版本只用了非常少的代码（40 行以内）就完成了数据并行，还是非常划算的。
 
-## 实验总结
+## 解释程序中涉及哪些类型的存储器（如，全局内存，共享内存等），并通过分析数据的访存模式及该存储器的特性说明为何使用该种存储器
+
+对于运行在 CPU 版本，内存结构在 C 语言的层面几乎是不可见的，通常来说数据是被存放在内存上，CPU 通过缓存读取；少部分经常访问的数据编译器会将其存放在寄存器中。因此下面主要针对 GPU 上的访存进行分析，主要有如下三个部分：读入对数表（如果有做预处理的话）、读入输入矩阵、写出输出矩阵。
+
+### 读入对数表
+
+最直观的想法就是把对数表直接保存在寄存器中。在 v1 版本中，我将对数表保存在寄存器中（值得一提的是，为保证结果的计算精度，保存的对数表是 `double` 类型）。通过检查编译生成的 `.ptx` 汇编文件，可以发现其值在编译时就已经计算完成。然而 v1 版本甚至比 v0 版本还要慢，猜测过大的寄存器占用减少了运行时活跃线程的数量，或是溢出的寄存器被保存到 global memory 中了。
+
+一个很自然的想法是要减少每个线程占用寄存器的数量。注意到对数表是固定的，因此在 v2 版本中我对于一个 block 中的所有线程可以使用 shared memory 共享同一张表，最终的运行时间要小于 v0 版本。由于 shared memory 并不允许直接初始化，需要在运行时由对应位置的线程计算，超出部分的线程空转，然后在 block 内进行线程同步。
+
+如果在更大的范围共享这张表会如何？注意到对数表是常量，天生适合使用 constant memory。对 constant memory 的单次读操作可以广播到同个半线程束的其他 $15$ 个线程，这种方式产生的内存流量只是使用全局内存时的 $\frac{1}{16}$。同时硬件主动把 constant memory 缓存在 GPU 上，在第一次从常量内存的某个地址上读取后，当其他半线程束请求同一个地址时，那么将命中缓存，这同样减少了额外的内存流量。然而对于 v2 版本来说，使用 constant memory 的 v3 版本提速的很少，不到 3%。
+
+为了验证 constant memory 的加速效果，我在 v4 版本中把对数表换成了 device memory（或者说就是 global memory），和 v3 版本相比确实没有明显变化。这说明在这里 constant memory 相对于 device memory 没有明显优势。为什么？我猜测，对于同一个半线程束的所有线程，其对应的元素及邻域不同，那么每种元素出现的次数是大概率不相同的。因此，线程束上的线程在同一时刻访问的对数表位置大概率不同。
+
+经过上述分析，可以知道 constant memory 其实并不是很适合这个场景。于是我又想到了 texture memory。texture memory 不需要满足 global memory 的合并访问条件也可以优化邻域上的数据读取。我直接将 v4 版本中的 device memory 绑定 texture 进行访问。相对于 baseline，在 $2560\times 2560$ 规模的输入上平均提高了大约 16% 的性能。我猜测原因是，由于这个表大小仅为 26，访问 texture memory 时很容易就把表的其他值传给了附近的线程，从而减少了内存流量，也没有带来过大的寄存器压力（因为不是所有线程都获得了整个表）。CUDA 还有一种 surface memory，相当于带写操作的 texture memory，这里不再尝试了。
+
+值得注意的是，CUDA 中 texture memory 访问的带宽仅有 4 字节，意味着在这里我仅能使用单字节的 `float` 类型存储对数表。当然，也可以使用 `double` 类型存储，然后在核函数中读取两次然后使用强制类型转换，不过这么做并不优雅。但是如果直接使用 `float` 类型进行计算，由于 `float` 类型仅有七位有效数字，在进行乘法运算的时候非常容易丢失精度（经过测试数据验证，会在小数点后四位开始产生比较大的误差）。因此，我选择使用**混合精度**的方法解决这个问题，即对数表使用 `float` 类型进行存储，但是在计算的过程中使用`double`进行计算。经过检验，使用混合精度的方案得出的结果在小数点后五位几乎没有差别，而运行时间却与完全使用 `float` 类型计算相差无几。
+
+出于控制变量的原则，texture memory 带来的优化效果是否是因为使用了混合精度呢？
+
+首先我要确认的是，减少寄存器占用确实能够提速。我在 v1 版本的基础上，将使用的计数器由 `int` 换成了 `signed char`，得到了 v6。由于邻域大小最大不过 25，`signed char` 有效范围是-128\~127，因此这么做不会带来任何结果上的错误。效果是非常明显的，相对于 v1 版本带来了几乎一倍的速度提升！
+
+随后我在 v6 版本基础上使用混合精度得到 v7，仍然能够得到 15% 左右的性能提升。
+
+但是，经过验证，在 v7 版本上继续应用 shared memory、constant memory、texture memory 时却带来了负优化，这说明此时寄存器压力不再是程序的瓶颈，之前的问题得到了解答。至此对于对数表访存的优化告一段落。
+
+### 读入输入矩阵
+
+对于输入矩阵来说，每个位置上的元素被访问了 25 次之多，但是输入矩阵的大小通常大于 64K，不适合使用 constant memory。于是考虑使用 texture memory 和 shared memory 对其进行优化。
+
+首先，我在 v7 版本的基础上使用 texture memory 得到 v8。和 v5 版本中的对数表相比，输入矩阵是二维存储的，因此这里也略有不同，绑定的是 2D texture memory。
+
+然后，我在 v7 版本上使用 shared memory 对输入进行优化得到 v9。然而从结果上来看，v9 版本却是负优化（原因分析见后），因此我没有继续考虑 shared memory 和 texture memory 混合使用的方案了。
+
+至此对输入矩阵的访存优化结束。从结果上来看，v8 版本是单卡上表现最佳的版本，不过与 v7 版本几乎相同。然而后续在多卡上进行测试时，v8 版本却明显比 v7 慢一些（原因不明，也许和纹理内存的调度机制有关），因此最后多卡版本中使用的是 v7 版本。
+
+### 写出输出矩阵
+
+由于输出矩阵中每个位置上仅有一次写操作，因此没有什么花里胡哨的操作了，直接写回 device memory 即可。
+
+## 程序中的对数运算实际只涉及对整数 $[1,25]$ 的对数运算，为什么？如使用查表对 $\log 1$ \~ $\log 25$ 进行查表，是否能加速运算过程？请通过实验收集运行时间，并验证说明
+
+由于求解的窗口大小仅为 25，可以对求解公式做下述变形：
+
+$$
+H(X)=-\sum_ip(X=x_i)\log p(X=x_i)\\
+=-\sum_i\frac{n_i}{\sum_i n_i}\log \frac{n_i}{\sum_i n_i}\\
+=-\frac{1}{\sum_i n_i}\sum_i n_i\log \frac{n_i}{\sum_i n_i}\\
+=\frac{1}{\sum_i n_i}\left [\left (\sum_i n_i\log \sum_i n_i\right)-\left(\sum_i n_i \log n_i\right)\right ]\\
+=\log\sum_i n_i-\frac{1}{\sum_i n_i}\sum_i n_i\log n_i
+$$
+
+在这个公式中，$n_i$ 代表当前求值位置的邻域中满足 $X=i$ 的元素的数量，$\sum_i n_i$ 则表示邻域的大小，在这个问题里均不会超过 25。因此变形之后对数运算只涉及对整数 $[1,25]$ 的对数运算。此外，在对数表中赋值 $\log 0\to 0$ 可以减少条件判断的次数。
+
+实验中，我的 v1\~v9 版本相对于 v0 版本、v11\~v13 版本相对于 v10 版本均预处理了对数表。由于预处理结果存储位置不同，存储精度也不同，他们的表现也各有差异，详见下一问。
+
+## 请给出一个基础版本（baseline）及至少一个优化版本。并分析说明每种优化对性能的影响
+
+我一共实现了 v0\~v14 共 15 个版本。由于 TA 提供的原始数据中只有 $5\times 5$、$2560\times 2560$ 两个数量级别的测试数据，前者过小而使结果容易受系统噪声影响，后者也不是明显的大数据集，我也设计了 $400\times 400$、$2560\times 2560$、$10240\times 10240$ 三组数据作为 benchmark。
+
+我将 benchmark 的过程封装成 class，只需要在 `sources/src/core.cu` 最后几行中的相关内容取消注释即可运行。
+
+```cpp
+static WarmUP warm_up(1, 1);
+static Benchmark
+    benchmark400(400, 400),
+    benchmark2560(2560, 2560),
+    benchmark10240(10240, 10240);
+```
+
+此外，实验中发现对于一张显卡上首次运行的核函数会有 30ms 左右的时间用于冷启动。为排除这部分对于 benchmark 的影响，我也封装了一个 `WarmUP` class，提前使用大小为 $1\times 1$ 的数据来对每张显卡进行“热身”操作。
+
+以下是对 $400\times 400$ 结果的可视化（时间单位为 ms，下同）：
+
+![benchmark400]
+
+以下是对 $2560\times 2560$ 结果的可视化：
+
+![benchmark2560]
+
+以下是对 $10240\times 10240$ 结果的可视化：
+
+![benchmark10240]
+
+以下是详细的数据：
+
+| 版本 | $400\times 400$ | $2560\times 2560$ | $10240\times 10240$ |
+| :--: | :-------------: | :---------------: | :-----------------: |
+|  v0  |    4.292960     |     31.354719     |     473.793365      |
+|  v1  |    4.708352     |     41.344097     |     733.725342      |
+|  v2  |    3.796704     |     29.511265     |     549.282898      |
+|  v3  |    3.714496     |     28.757376     |     530.392090      |
+|  v4  |    3.548896     |     29.387968     |     532.152283      |
+|  v5  |    3.276384     |     27.691393     |     508.423401      |
+|  v6  |    2.763712     |     17.299105     |     331.066833      |
+|  v7  |    2.552288     |     15.259968     |     297.580750      |
+|  v8  |    2.426016     |     15.150208     |     296.813080      |
+|  v9  |    2.561056     |     16.476641     |     323.676361      |
+| v10  |    9.266080     |    130.554169     |     1887.637573     |
+| v11  |    1.995008     |     24.977760     |     316.286682      |
+| v12  |    1.709536     |     18.499392     |     258.574951      |
+| v13  |    7.093696     |     98.223297     |     1148.376221     |
+| v14  |    1.636960     |     10.473536     |     139.679169      |
+
+可以比较直观地看出各个优化手段的效果。由上面的数据可以看出，单卡版本中最快的的是 v7、v8；OPENMP 版本中最快的是 v12；全局最优秀的是多卡版本 v14，并且在大小 $10240\times 10240$ 数据上相对于 v7 单卡版本有 $297.580750/139.679169\approx 213\%$ 的加速比。详细分析见下一问。
+
+## 对实验结果进行分析，从中归纳总结影响 CUDA 程序性能的因素
+
+### 分析
+
+总的来说，v1~v5 版本虽然出发点是在围绕访存进行优化，但是实际上程序运行的瓶颈与提升效果都在于寄存器压力上（而且提升的并不多），后续 v6\~v7 版本的优化效果也应证了这一点。
+
+虽然单卡中最快的是 v8 版本，但是其相对于 v7 版本几乎没有提升，因为对输入数组的访问都是对连续地址的访问，texture memory 在这种情况下并不能额外提供多少加速（因为本身已经很快了）。
+
+至于 v9 版本，虽然访存流量已经几乎减少到原来的二十五分之一，但是在各种规模上仍然没有提升！这是为什么呢？实际上，根据我在[nvidia 官网](https://www.nvidia.cn/data-center/v100/)上查到的数据，实验使用的显卡 tesla-v100 带宽高达 900GB /S，而 $2560\times 2560$ 大小的矩阵只有 26.2144MB，理论上只需要不到 0.03ms 就可以完全读入（实际上会有差距，因为不是单次读入），因此输入数据完全不足以跑满显卡的带宽。而能够跑满显卡带宽的数据大小已经远远的超过单张显卡 32GB 的显存了。而 v9 版本相对于之前的版本，代码逻辑更为复杂，所以可以说是得不偿失了。
+
+因此，本次作业中影响程序性能的主要瓶颈并不是访存，而是**寄存器压力**，后者是通过影响**活跃线程数量**来影响最终性能表现的。这与我们通常编程时的一些常识与习惯（把尽量多的东西保存在寄存器里）有些冲突。
+
+一方面，CPU 能够同时调度的线程数（核数）远少于 GPU，但是单个线程寄存器更少、流水线更短；另一方面，GPU 相对于 CPU $\frac{T_{计算}}{T_{访存}}$ 比更小，因此由于寄存器溢出导致活跃线程数量减少和对 global memory 的额外存取会很严重地影响程序表现。因此 GPU 上代码中优化策略的选择和效果与 CPU 版本会存在很多区别。
+
+### 总结
+
+结合本次实验和一些已有的经验，我认为写出一个比较高效的 CUDA 程序需要考虑以下这些因素：
+
+- 选择好的并行算法，发掘更多的数据并行性
+  - 避免过于复杂的核函数逻辑
+- 保持 SM 尽可能忙碌，尽量利用所有的 SM 参与计算
+  - 增加数据量
+  - 减小线程块大小
+  - 减少寄存器压力，增加活跃线程数量
+- 优化存储器的使用
+  - 全局存储器合并访问
+  - 使用更快的 shared memory 或 constant memory、texture memory
+- 增加计算的效率
+  - 避免一些其他硬件上的限制
+    - 减少同一个线程束上的条件分支
+    - 减少 bank conflic
+  - 使用更加高效的计算方法
+    - 使用混合精度或更低精度的类型
+    - 使用 `__fdividef(x, y)` 代替 `x / y` 等
+    - 编译时开启 `-use_fast_math` 选项
+    - 使用一些已有的高效实现，如 `<cuBlas_v2.h>` 等
+  - 开启 `-O3` 选项，进行循环展开、流水线并发在内的很多编译器优化
+
+### 其他可提升的地方
+
+由于集群资源比较有限，我还有一些想法但是最后没有完成：
+
+1. 多卡版本中使用 4 个线程分别调用单卡版本完成子问题的计算，然后将结果拷贝回最初的答案矩阵。实际上我们使用的集群有 32 个核，这里拷贝的过程可以让每个线程再次 fork 成 8 个线程，充分利用集群的算力。
+2. 同上，既然要在多卡版本中同时利用 CPU 的算力的话，其实 CPU 也可以负载一部分的有效计算。不过这么做很容易带来木桶效应，因此就没有做了。
+3. 多卡版本中数据划分是按照 height 来的。这样做虽然可以免去输入数据重新打包的开销，但是对于一些特殊的数据，比如大小为 $10\times 10^7$的输入，按 height 划分显然不如按 width 划分来的优秀。
+4. 一个有趣的问题是，使用的 V100 显卡是 NVIDA 生产的，而 nvcc 也是 NVIDA 开发的；然而使用的 CPU 是 Intel 生产的，对应的使用的 CPU 代码编译器 gcc 却不是 Intel 的，显然并不能充分挖掘其计算潜力。为此我使用了自己机器上的 icc 编译器重新编译了这个项目，成功让几个使用 OPENMP 的版本提速了 50%。但是对应的 CUDA 版本运行时会报错，提示纹理引用错误。可能是我在链接的时候哪里出了错吧…相同的代码在 gcc 下就可以正常运行，可以说是比较奇怪了。
+
+## 可选做：使用 OpenMP 实现并与 CUDA 版本进行对比
+
+详见之前的 v10\~v14 版本，已经说的比较完整了，此处不再赘述。
+
+[version0]: data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAeYAAAClCAYAAACJKF65AAAFUElEQVR4nO3d4XHbRhgEUCLDEtKF1IObcQOuxCkgzagHqov0IOtiQ4I8cUIpErG3fO8Xx+YP7Bx0S4IkvuXh0aHI/f394ebmZu/DeHdyzUWuucg1l/Zcv+19IADAM8UMAEEUMwAEUcwAEEQxA0AQxQwAQRQzAARRzAAQRDEDQBDFDABBFDMABFHMABDkuPcBvKtlOfTd1vw7ueYi11yecnXN9GFSy+l0qjkTb25v9z4EYGL3p9PehwCHpWrs4+M7ZoA3K9oOh/bxiG3WXF2Xsrf8gU1BrrlU5vKCnjC+/AUAQRQzAARRzAAQRDEDQBDFDABBFDMABFHMABBEMQNAEMUMAEEUMwAEUcwAEEQxA0CQ2rGPxrcB57BvkKZ37GNRrKFyqs9BrtlU5rJvTKc9l0vZABBEMQNAEMUMAEEUMwAEUcwAEEQxA0AQxQwAQRQzAARRzAAQRDEDQBDFDABBFDMABDnufQBct79vRL8dIjBsBwn8/H//JPD5jTfYBy7D2Ed2s12vFwKL9i3PH5NiyGffII2xj5OoHHO2rlfZWtXmOpSfh0PZmlWu16E/l8+YASCIYgaAIIoZAIIoZgAIopgBIIhiBoAgihkAgrjzF/sp+83ok9ZcwEV4xwwAQRQzAARRzOxn3ArxnHtPz6Y1F3ARihkAgvjyF/trG/sI8D8Y+8huasc+/uAcnIN9gzTGPk6ifcxZG7kmYt+YTnsunzEDQBDFDABBFDMABFHMABBEMQNAEMUMAEEUMwAEUcwAEEQxA0AQxQwAQRQzAARRzAAQxNhHdrN8ufvx6O5fnzcvuWawHVvxfE42acw03B0evn7a+yA+xHFMs2ixnTXSlGvVmAngrRr3xJHp2Dg6a2jL1TnmrPWVPHAJbXvius+7lE2EtktSnS+kSnP98fzQeZiv8+OGl3z5CwCCKGYACKKYASCIYgaAIIoZAIIoZgAIopgBIIhiBoAgihkAgihmAAiimAEgiGIGgCC9QyyWZe8jeFddt6H/bjsHdztIoEHjeg2tuSBJ7TxmgNdq2g9XjZlWjdlGpuXh0d4H8m7K3iUDF1a0HQ7tYx9bx3R2Xcp+/KNqPBGHxlzX8AfWRi74eL78BQBBFDMABFHMABBEMQNAEMUMAEEUMwAEUcwAEEQxA0AQxQwAQRQzAARRzAAQRDEDQJCuIRbAh3keOnL34t+3A0i2g0l+JfH5BliQpGoe86ox09Caa2jM1pipWet6teYaGrP1zWM+9I5va8xl7ONc1vVqW6vWXEPzeTi0rdm6Xj5jBoAgihkAgihmAAiimAEgiGIGgCB+xwycpe0bsKvWXMzLO2YACKKYASCIYgbOMm7scM4tLmfTmot5KWYACKKYASCIYgaAIH4uBbzKz5/HJo5xfM3zIY2xjxNpzTU0ZmvM1Kx1vVpzDY3ZjH2cSGOuaxjf1kauuTTmuoZ9w2fMABBEMQNAEMUMAEEUMwAEUcwAEEQxA0AQxQwAQRQzAARRzAAQRDEDQBDFDABBFDMABFHMABBkOZ1OVdOlmMftn389PT59/n3HIwFmcQ37xrFtJFjjmLOhM9fz+La2bJ3rJddsOnP17xsuZQNAEMUMAEEUMwAEUcwAEEQxA0AQxQwAQRQzAARRzAAQRDEDQBDFDABBFDMABFHMABDkuPcBwLB8ufvvJ02nMdMg11xac/Uy9pHdbMe3AbyWsY+T6Bxz1prLK3ng7dr2xHWfdymb3Tx8/VT6gqP1hZRcs5FrTr78BQBBFDMABFHMABBEMQNAEMUMAEEUMwAEUcwAEEQxA0AQxQwAQRQzAARRzAAQ5Bs5BCDa3ebZKgAAAABJRU5ErkJggg==
+[version9]: data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA4QAAAEsCAYAAACbnn2RAAAW+klEQVR4nO3dz27b2L0H8MOBUaDwIgMYRVvMpqwXeYNZ3lwYuGs3qz7B3HkoP0TG6F6YaKelN8XNIuFCaAp4NcmmUja6oijJFEnZlhSRyuHnk2FJpTw51B+fY9r88pd8/PhxFh7x73//O/z5z39+bBfttNNOO+2000477bTTTjvtvsF23z21w3/+85+dO9dOO+2000477bTTTjvttNPu9NsddkKY3YRBtnu7LBuEwZaGj7abt8myPdrN+1u03aPdNsdplz+//drlDXd/fls6e6Ldtr6e7m+w//Pbsb/BYJB/YPb7fA4Gi6XpXXz6/dvvc7bf57rN/rLiddnj9Qx5uy3/12P95WNEtqXto8eZbf/MNLfL1mPS3uPLnuPgXq/nPuPEaqzeMmY/1W7bmP1kuy2v6XP6axqzn9OuyfHaNb8Xz2nXNI4+q90ex7nz/FB+H/Z9fs/tb9nmsTH76c9Z85j9vPdvv8/Zfp/rNvvbPmY/+XnZddxd9rdtzH7yOLd8ZrZ/Xh4fs4/3ud7z9dxxnFiPtzuO1w+vyW7j9brdjq9nub9dxutyuybHa7ff+7DreL3v9xMP7/tu4/XG+7Dv8wvPOCGcTCZb/78suwzbvjN5rF0uTXftb95Puvhvj/7SPfp73NdvV7yOaWj+IDze3/YTtNN5fiFsPcgj9Je/34Nsz89L3vj9+x3bHfD+ZWHrF8Rx+ns/b7Nrf/nXULrf52zbF9+T/W3/Jx9rF8LNjs8vXbwmaZrt8boU9nld0nzc32NceuTjsrXdaqzeNmY/1S5s6fPxdoOtY/bT/TW//885zibHaVd8U9L0Nfh0f7t93Xbz/LKtH+yv2d+qzWNj9pP9bRmzj/b+bfkiPF5/zWP24+3C1jH7Wa/nzu32HZfyreYxe/vnJTw6Zj/n87nP67JtzH5y3A27jZ9huf+u4/WqXXn9/Hbbv8d+ur/dxuttx3fcdtu/Z3q6v92/z2r/+YWdx+tqf2fbuy489pPq9Opq6zfcj7ZbHEFzy+3tHv8G8fH+lu13bre9w8fbXe3Rrnh+xbdCbfS3//PLD3Sv9/1q3+Pcfijb2uWvyf6fl3nDn37a8X1I15+zpmf59V+XtJgMs336a35uT7XLn+C2Iz3K5yV/Qbe8iY+32/355a/JYr1ju6K//cbBMH/f93k9V+P+Lp/Ph7F6t3Fwc4yvt3xeu336yxqP9Xj97fY5K/fX9F4cs7992+37edmvv+f/ZHzjs7nlST7rdWkYs5/7ua5+HR7zdWkas59ut9t8VH5+u8wPh39eQuOY/TWfX7nN/se57zi423y7brc6KXxuu9X3yFvmzifbLY91v3b79LfjeH1wfzt+/ZX62+t9OKC/fdvt9b7v+P3S5vt34Anh/u32PBFpvb+2j3O/b0gP6e/baNf++/BttNv9G6jD+tPuJNrteYK9d39Fp99If20f5+4/wDu0v2+jXfvvw7fRrnnMPr3j1O6rttvxxO6x73me1273X7h001/bx7nreH14f99Gu2Kd/POf/5zlv07Ml+l0Gqrb+RoAAID4nH3//feP7vCPf/wj/O/PP7d0OAB8c37t+gCO4L9L2792dAwAnLZXs66P4KvYuGQ0u7kJ2U8/NedaZnE8YQC+grfJw3YkE+Km2J8fAHspz3+R2LjLaHp52dVxAAAA0LKz33777SE3OP+Li7u7MCplCAEAAIjTZobwL3+p7ZBnCAEAAIjPxiWj26rcAwAAEJ9KHcL0qXIWx5U8M6RZvsHNc9rY3/72t7/9v+7+v4bmv2/zeJ4T7H91wP7PaXfIv29/+9vf/vb/evu7AdjeNjKEX7IsTD5/liEEAADogeTjx4+Pnk6v6xC2UXZi9dNhJS4ATlvbZSdW/bX1E+Btv/UE4LS0PT9EWHaplCHMZAgBAAB6pHRCWIQHnQ8CAAD0w2aG8MsP4WJyF0YjGUIAAIDYbdYhbKAOIQAAQJw26hCGbBAGrhkFAADohVIdwvymMu/n66vuahG6kxsATSK5kxsAX5n54WClDGESvvzwXzKEAAAAPSFDCAAA0FMbGcJsMOi27EReCLhcDBgAcnkh4LfmBwAqzA8H27ypTJoqRAgAANATlTqEX+ZrGUIAAIA+kCEEAADoqdPKEAIAANCa0glhVtQfdEYIAADQC5t1CL/8IEMIAADQEzKEAAAAPbVZdiIbhMwlowAAAL1wtvkwLXKEXZnNOuwcgJP1yvwAQAPzw8E26hBO8zqEd3dhNJEhBAAAiJ0MIQAAQE9tlJ3Ius4QJkmxAEDZ26RYAKDM/HCw76p/kbmrDAAAQC/U6hBeXHwOo9FIhhAAACByMoQAAAA9dVoZQgAAAFpTOiEsChA6HwQAAOiHjTqEiwzh5C6MRuoQAgAAxE6GEAAAoKfWl4xmNzdhsMgRZnKEAAAAPXC22kgvL0v5wXwrbf9oZrP2+wTg9L0yPwDQwPxwsIcM4e9+F3549yV8XuYJx+OxDCEAAEDEHjKEf/pT4w4yhAAAAHGqZAgf1p1IkmIBgLK3SbEAQJn54WDrE8I8Q1heAwAAELdKhvBduJtOw/loFIbqEAIAAEStniF8+XJjBxlCAACAONUzhNlAHUIAAIAeqGUIF/UHOyhBCAAAQLtqGcLPHz6Eyf19GMsQAgAARE2GEAAAoKcqGcJMhhAAAKAnzlYbeYYwW4QH5yeFoaMY4WzWRa8AnLpX5gcAGpgfDlbPEE4uwvlkFIZjGUIAAICY1TOEFTKEAAAAcarVIQzZIAy6yhAmSbEAQNnbpFgAoMz8cLBKHcL8pjLvQ3BTGQAAgOhVMoRfwueLH4sM4VCGEAAAIGYyhAAAAD1VyxBmg4ErRgEAAHqgkiHMN1IZQgAAgB5oqEM4356MwlgdQgAAgKjJEAIAAPSUDCEAAEBPna028gxhlp8KpqHIEKYdHM1s1kGnAJy8V+YHABqYHw5Wr0M4uZAhBAAA6AEZQgAAgJ6qZQhDNghZVyHCJCkWACh7mxQLAJSZHw5Wr0OYhwe7yA8CAADQqlodwrt8ezQK46kMIQAAQMxkCAEAAHqqkiHMQtZlhhAAAIDWNGQI5yeHzggBAACi11iH8Pz8PgyHYxlCAACAiMkQAgAA9JQMIQAAQE+drTbyDGG2KEA4PykMHZUinM266BWAU/fK/ABAA/PDwWp1CBcZwskoDMfqEAIAAMRMhhAAAKCn1peM5tnBhwtF05B2cc1okhRrl44CUPZ2OT+4NAiAMvPDwb572ExLwUF3lQEAAIjdOkOY/OtfYfrlD0WecL6Mx+oQAgAAxEyGEAAAoKce6hAu6w8W9QgBAACIXS1DmNcjBAAAIH6VDOGXcDedhvPRKAyn6hACAADErJ4hfPlyYwcZQgAAgDjVM4TLNQAAAHE7e9hc1iHMyvUIW6YgPQBNFBwGoIn54WC1DOHkw4cwub8PYxlCAACAqMkQAgAA9NT6ktE8O7i8ZnS+XIW0i8tGk6RYu3QUgLK3y/nBpUEAlJkfDlapQ1icBbqnDAAAQPzqGcLJRTifjMJwLEMIAAAQs3qGsEKGEAAAIE61OoRhvh64ZhQAACB6lQxhNj8pfC9ECAAA0AOVDOEfwuTixyJDOJQhBAAAiJkMIQAAQE/VMoTZYOCKUQAAgB44e9hMi7r0+f9kYbndMgXpAWii4DAATcwPB2uoQziZL6MwVocQAAAgajKEAAAAPXVaGcIkKRYAKHubFAsAlJkfDlarQ7jIDrqrDAAAQPTqdQgnFzKEAAAAPSBDCAAA0FO1DGFYrQEAAIhaJUNYXgMAABCzWh3Cu7wO4WgUxlMZQgAAgJjJEAIAAPTU2WojzxA+1Jy4CqnLRgEAAKJ29rCZrs8HsyybnxBunhEmt5+OfzS//Fas2+gLgAP87WHz9nV7/bXSVwiz0nbSUp8A7KPd+aE8/80e2etb0liH8Pz8PgyHYxlCAACAiMkQAgAA9NSzMoTJL7+F2fWL4x9NkhTrWSy/gAWIU3L7sD27fnP8Dt8u54dX7cwPyS8P0YVW5j8A9tP2/BBhjKBSh7A4C1SXHgAAIH61OoSLDOFkFIZjdQgBAABiJkMIAADQU8sMYbYoNVFkCMNirQ4hAABA3JYnhMXNZB5OCcsnh+17quZhOeD/nPqI9re//e1v/+PtX/774x1PUfdp1/qA5Rve7Lr/c9od8u/b3/72t7/9v8b+9fmB3TxkCJO/hh+m0/B5vp0/Ho/VIQQAAIhZ8vHjx0dPqPMM4c9//Hsrt91e/XTYLb4BTlv5p7NtlJ1Y9ddKiYuw/beeAJyW9ueHdue/NizLTmSLOoR5jDC7uQmDbo8JAACAFtQyhFeXl53VIfRTWACaxPJTWAC+LvPD4SoZwnfhbjoN56NRGE7VIQQAAIjZQx3ClZcvNx6qQwgAABCnSh3Cq/kyWKy7qEPopjIANGn7pgEAfBvMD4drqEOY1koQzv72fbXdUagfAvBt2Bivf02O399qGnp7/L4Kvz1sttYnALtqf374W0v9tKeWIfz84UOY3N+HsQwhAABA1GQIAQAAeqqSISwuHa1mCJNfflOYHoC1jcK8r+IrTB9KhenDK4EGgFPV/vzw+ul9vjHLwvTF2V+2XgMAABC7eoZwchHOJ6MwHMsQAgAAxKyeIayQIQQAAIjT8pLRPEM4CIsY4Xw9cM0oAABA9Cp1COdngtn7sChQ30FhejeTAaCJgsMANDE/HK6SIZyGzxc/FhnCoQwhAABAzGQIAQAAeqqWIcwGg87KTuR1CJNy7ScACEWdqSTC2k8AHMb8cLhKHcJ8M1WIEAAAoAca6hBO5o9HYawOIQAAQNRkCAEAAHrqpDKEAAAAtKeSIcxWJQkBAACIXL0O4eRChhAAAKAHZAgBAAB6qpYhDKs1AAAAUTsrVkVwMFtspatIYetm1y+66RiAkza7ftP1IQBwgswPh6vVIbzL6xCORmE8lSEEAACImQwhAABATy0vGc0zhMUFo0XNiauQdnDZaHL7abF26SgAZcnt68XapUEAlJkfDlepQ1jI3FUGAAAgeo11CM/P78NwOJYhBAAAiJgMIQAAQE+dVIYQAACA9lQyhJtZQgAAAOJVq0O4yBBORmE4VocQAAAgZjKEAAAAPXW23soGYRDS5UWjqQwhAABA5Eo3lXkfFlnCtHi8yhW2SUF6AJooOAxAE/PD4ZYZwt+H5K//U9Qh/DxZZAfHY3UIAQAAYiZDCAAA0FPfrbfyDGE2X93chEFHB5PcflosAFCW3L5eLABQZn443PKEcJkhnJ8QppeX3R4RAAAArahkCN+Fuw/TcD4aheFUHUIAAICY1TOEL19uPJQhBAAAiFM9QzhfZ1mHRwQAAEArahnCh1qEAAAAxKyWIfz8fx/C5P4+jGUIAQAAoiZDCAAA0FNn6608QxjS+Z/8utGrkLpsFAAAIGrLE8JlhnB+IhjSbHFK2MX54Oz6RQe9AnDqZtdvuj4EAE6Q+eFw9Qzh54twPhmF4ViGEAAAIGb1DGGFDCEAAECcanUI1+sOJLefFgsAlCW3rxcLAJSZHw5XqUNYrkcIAABAzCoZwmn4PPmxyBAOZQgBAABiJkMIAADQU7UMYTYYuGIUAACgByoZwvlmXpHeGSEAAED0GuoQTuaPR2GsDiEAAEDUZAgBAAB6SoYQAACgp86K1TJDGNLFf0WWsP2DmV2/aL9TAE7e7PpN14cAwAkyPxyuXofw84UMIQAAQA/IEAIAAPRULUOYr7OOQoTJ7afFAgBlye3rxQIAZeaHw9XrEK5yhAAAAEStVofwLq9DOBqF8VSGEAAAIGYyhAAAAD11tt7KM4Qhnf/Jrxu9CqnLRgEAAKLWkCGcr7q6qwwAAACtaaxDeH5+H4bDsQwhAABAxGQIAQAAekqGEAAAoKeWJ4TLDOH8RDCk2eKUsIvzwdn1iw56BeDUza7fdH0IAJwg88PhanUIFxnCySgMx+oQAgAAxEyGEAAAoKe+W21kg0F+4eii5ERXVSeS20+LBQDKktvXiwUAyswPh1ufEC7uIrM+EVSHEAAAIHbLDOEkJEkSptMiN5gv47E6hAAAADGTIQQAAOipSoZwvr65CYMODwgAAIB21DKE6eVlh4cDAABAWyoZwnfhbjoN56NRGE7VIQQAAIhZPUP48uXGQxlCAACAONUzhNmgszqEAAAAtOdsvbWuQ5gu/uvC7PpFNx0DcNJm12+6PgQATpD54XC1DOHkw4cwub8PYxlCAACAqMkQAgAA9FQlQ5h1miFMbj8tFgAoS25fLxYAKDM/HK5Sh7AID7qnDAAAQPzqGcLJRTifjMJwLEMIAAAQs3qGsEKGEAAAIE61OoTzjTBwzSgAAED0KhnC/KYy74UIAQAAeqCSIZyGycWPRYZwKEMIAAAQMxlCAACAnqplCNdZQgAAAKJ2tt5aZAjL6/YPZnb9ov1OATh5s+s3XR8CACfI/HC4hjqEk/kyCmN1CAEAAKImQwgAANBTJ5UhTG4/LRYAKEtuXy8WACgzPxyuVodwkR10VxkAAIDo1esQTi5kCAEAAHpAhhAAAKCnahnC+cbiylEAAADiVskQLjY6qUEIAABAu2p1CO/yOoSjURhPZQgBAABiJkMIAADQU5UM4fyPDCEAAEAvnK231hnCvBxhNn/YfpBwdv1isX6qOP1qv+fsa3/729/+9j/u/uW/P9bxzK7fNPT7dCHicrtd939Ou0P+ffvb3/72t//x9uf5GusQnp/fh+FwLEMIAAAQseTjx4+zx3bIM4Q///HvGz/FBaDfyj+dbfqt2rdu2289Aei3GOc/GUIAAICeqtQhLHKDzgcBAADiV6tDuMgQTkZhOFaHEAAAIGbqEAIAAPRUQ4YwkyEEAADogeUJ4fwMMA2l8KAzQgAAgNgtM4S/D0ny12UdwsliGY/VIQQAAIiZDCEAAEBPVTKE8/XNTRh0eEAAAAC046xYPWQI08vLxgRhcvupzeMC4BuR3L7u+hCOKrnt+ggA4HgqGcJ34W46DeejURhO1SEEAACIWT1D+PLlxkMZQgAAgDidrTbyDGG4uso35o+uQpo+7DS7ftHBoQFwut50fQAAwFfQUIcwLbYBAACIWi1DOPnwIUzu78NYhhAAACBqMoQAAAA9ValDOP+TzddNdScAAACISiVDmK4eAQAAELl6hnByEc4nozAcyxACAADErJ4hrJAhBAAAiFMlQ7jYCAPXjAIAAESvkiHMbyrzXogQAACgByoZwmmYXPxYZAiHMoQAAAAxkyEEAADoqVqGcJ0lBAAAIGqVDOF8SVMZQgAAgB5oqEM4mS+jMFaHEAAAIGoyhAAAAD0lQwgAANBTtTqE6ywhAAAAUavXIZxcyBACAAD0gAwhAABAT9UyhPONxZWjAAAAxK1ehzDfSDs8IgAAAFpRq0N4l9chHI3CeCpDCAAAEDMZQgAAgJ6qZAjnf2QIAQAAeqEhQ5iXI3RGCAAAELvGOoTn5/dhOBzLEAIAAERMhhAAAKCnZAgBAAB6qpIhTFePAAAAiFytDuEiQzgZheFYHUIAAICYyRACAAD01Nl6K88OhnT5IA1p2twAAACAOHz3sJmG9fmgFCEAAED0lhnCSZgkSfjyrsgN5st4rA4hAABAzGQIAQAAeurhktFl/cHs5iYMOjwgAAAA2lHLEKaXl90dDQAAAK2pZAjfhbvpNJyPRmE4VYcQAAAgZvUM4cuXGw9lCAEAAOJUzxAu1wAAAMStoQ5huR4hAAAAsaplCCcfPoTJ/X0YyxACAABETYYQAACgp87WW3l2cHGtaB4gvAqpy0YBAACiVskQFmeB7ikDAAAQv3qGcHIRziejMBzLEAIAAMSsniGskCEEAACI0/8DbyT84+7zn7AAAAAASUVORK5CYII=
+[version13]: data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAy8AAAEDCAYAAAA83DtUAAAFqElEQVR4nO3ZsQ0CMRBFQZtKr8QrgZLowFx0JARk5kkz2gJ++rRzjXEdfPHcPQAAAD4euwcAAAD8QrwAAAAJ4gUAAEgQLwAAQIJ4AQAAEsQLAACQIF4AAIAE8QIAACSIFwAAIEG8AAAACeIFAABIEC8AAECCeAEAABLECwAAkCBeAACABPECAAAkiBcAACBBvAAAAAniBQAASBAvAABAgngBAAASxAsAAJAgXgAAgATxAgAAJIgXAAAgQbwAAAAJ4gUAAEgQLwAAQIJ4AQAAEsQLAACQIF4AAIAE8QIAACSIFwAAIEG8AAAACeIFAABImON8rd0j+FfH7gEAAHDzeQEAABLECwAAkCBeAACABPECAAAkiBcAACBBvAAAAAniBQAASBAvAABAgngBAAASxAsAAJAgXgAAgATxAgAAJIgXAAAgQbwAAAAJ4gUAAEgQLwAAQIJ4AQAAEsQLAACQIF4AAIAE8QIAACSIFwAAIEG8AAAACeIFAABIEC8AAECCeAEAABLECwAAkCBeAACABPECAAAkiBcAACBBvAAAAAniBQAASBAvAABAgngBAAASxAsAAJAgXgAAgATxAgAAJIgXAAAgQbwAAAAJ4gUAAEgQLwAAQIJ4AQAAEsQLAACQIF4AAIAE8QIAACSIFwAAIEG8AAAACeIFAABIEC8AAECCeAEAABLECwAAkCBeAACABPECAAAkiBcAACBBvAAAAAniBQAASBAvAABAgngBAAASxAsAAJAgXgAAgATxAgAAJIgXAAAgQbwAAAAJ4gUAAEgQLwAAQIJ4AQAAEsQLAACQIF4AAIAE8QIAACSIFwAAIEG8AAAACeIFAABIEC8AAECCeAEAABLECwAAkCBeAACABPECAAAkiBcAACBBvAAAAAniBQAASBAvAABAgngBAAASxAsAAJAgXgAAgATxAgAAJIgXAAAgQbwAAAAJ4gUAAEgQLwAAQIJ4AQAAEsQLAACQIF4AAIAE8QIAACSIFwAAIEG8AAAACeIFAABIEC8AAECCeAEAABLECwAAkCBeAACABPECAAAkiBcAACBBvAAAAAniBQAASBAvAABAgngBAAASxAsAAJAgXgAAgATxAgAAJIgXAAAgQbwAAAAJ4gUAAEgQLwAAQIJ4AQAAEsQLAACQIF4AAIAE8QIAACSIFwAAIEG8AAAACeIFAABIEC8AAECCeAEAABLECwAAkCBeAACABPECAAAkiBcAACBBvAAAAAniBQAASBAvAABAgngBAAASxAsAAJAgXgAAgATxAgAAJIgXAAAgQbwAAAAJ4gUAAEgQLwAAQIJ4AQAAEsQLAACQIF4AAIAE8QIAACSIFwAAIEG8AAAACeIFAABIEC8AAECCeAEAABLECwAAkCBeAACABPECAAAkiBcAACBBvAAAAAniBQAASBAvAABAgngBAAASxAsAAJAgXgAAgATxAgAAJIgXAAAgQbwAAAAJ4gUAAEgQLwAAQIJ4AQAAEsQLAACQIF4AAIAE8QIAACSIFwAAIEG8AAAACeIFAABIEC8AAECCeAEAABLECwAAkCBeAACABPECAAAkiBcAACBBvAAAAAniBQAASBAvAABAgngBAAASxAsAAJAgXgAAgATxAgAAJIgXAAAgQbwAAAAJ4gUAAEgQLwAAQIJ4AQAAEsQLAACQIF4AAIAE8QIAACSIFwAAIEG8AAAACeIFAABIEC8AAECCeAEAABLECwAAkCBeAACABPECAAAkiBcAACBBvAAAAAniBQAASBAvAABAgngBAAASxAsAAJAgXgAAgATxAgAAJIgXAAAgQbwAAAAJ4gUAAEgQLwAAQIJ4AQAAEsQLAACQIF4AAIAE8QIAACSIFwAAIEG8AAAACeIFAABIEC8AAECCeAEAABLECwAAkCBeAACABPECAAAkiBcAACBBvAAAAAlv5a4HwnRrg8cAAAAASUVORK5CYII=
+[version14]: data:image/webp;base64,UklGRvgZAABXRUJQVlA4TOsZAAAvqQPaAE/jprbtStm5sUBFN/8RkB4k4AgL+PkroEIAXmKCUdtIkrOuKgL73AVwAVjHjSS7yuy8LL6D0WqlDeDduKEfBiYFRBCcCcXdEWF4kwnzTzZpsydp7wCpSM0NibBzB52zvct/wEIDhN0TAbcA5PrNNEBF6g8Wbzhk8oUgt7tBRdrdkAiLMzYmb4yQwRfyO89SKjEppVRi7lujIhEWZyQCbgKDucEFgnx6lVKJqSvqipQ6V2JSSqmueG+LNAHCABgNvhDkn5+UUqor+scSk9L32BkE3AAQ5Hg1PuDkjzcBERGMUaAkxZEk9aLtHi0zM7UtMzMzsw31s9b/f0FJmZrMUh36VSmi/7IgSQ5TZ6vwixOgTvLJPIOWk06bH8q1bcttI1e/5zV3TJVG5R8BifdVzUe1RwAi+i8FkiRHkhKcVvw3PruqYwkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMA/5svaO4S/zZe1dwh/mS9r7xD+NF/W3pF/+yfwix1WPXnv67badLJ2h62PHr388Q5rdxTx8ydzb93aF17/6NFLXvPHHWXcZe6j9+yomV0V+uh1F7D2A5epzzf/EZ68/1u3XcZdpu72rpfs8ZNdJXzywW9tPwr7KmZPzWz3koWLPPvSb221dkeTOT3uQ3/cXJ873P/Vj17y2j9epK295J03x+5CZby124+An+8w67l/f/PWApys3eUEz/3LRkfYV8bPvfaPPP+mb222dldLevL5V/xxexn3NcAd9bnTuy9wFN63qM+vb67PS+DkJ7ux2dpd7vf5xxfxrifve3znjt3mg/DG15ye6cv/+q1btHbx2A88PmG7T253/9ecPPk129vavvPl+25ecy5Uxlu7nfDTXZ7zy63FPlm7p7ZOjrDd2u3non87ndN2lHFPU9/u36f63I3N1u717tuvzxsH2Fefl8DJT3Zjs7U7cRHv+sLju3fsth+ELz+GF956Y/JWa7eX8Btv/eMJm8u4z02O577NbW1fdT5783vepcp4S7cFfryrJW328JO1u2rrN7du7bp6d1i7s6lvPIvtrs9dZdzp3XeuPvddFjy6+TVzc83sxmZrd+IS3vXh193BY7fdS377TvjVJ25M3mrtjhI++7oTNpdxj5ssPPkSbe35Y1O/VBlv57bEDzcZtjJ++6nmZO2+a4WPsd3anS1ph7WXwKI+dzTARfPbbu2+Cn18kfr83PFifHN97t5srpnd2GztXlzAu951ehHafux2YZd37TgIX/jWkw/94cbkrdbuKeEv33PE5jLubrUXaWvv3lGfu3ErtxW+v+etm+3v3Zys3bfzpXdut3bvznZrd+9stnb3ZrO1e737AvW5PIdtrs/d2Fwzu7HZ2r24hHcdXeXOHbsdB+HZ9zz7nqPJW63dd/H3zRtsLuMuNzm9LF6grS1azaXKeBu3Nb63/XXolTta08nanbg5r2y2dvddNlu74y6L9wK2l3Evtlu7y7t3Wbuj8Z3q873v2Vyfu7G5jLtx29auvfQS3vXsa+7csdtxEF546we/dTR5q7W7Svjcf3xoe6vZ7ibLd5cuchROPnmhMt7G7Qy+s+cMv/116GTtvt8Ajp/YbLZ25xN9fbu1e57o+P76njLuu/x85faa2evdl6nPl717e33uxuYy7sOemtl1NXG65NnsXftK+Pn3XKKMx8/ldli75yD88pWnOt1q7Y5DcGo0N59HbK7PfZ/YvGOHJ+/GBcp4aqG3+lnu1859AjxV1u673LnlEnxmXe6Js/bZm5+3W4JPnSn3XFm768fma5Bn/vn3v/7lz7/7xc9/9pMf/+gH3//ed7/9tc9++pO2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2vfV84rZt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt2x4Oh8PhcDgcDofD4XA4HA6Hw+FwOBwOh8PhcDgcDofD4XA4HA6Hw+FwOBwOm3EswSXKkMOYWHsPGQuK2nDizO2DH73pyDecO1u73P4fEa724xwx9PQlEpPa4+K+KDaz7ZokSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkaS/Srid158Fg/OrVj14znDgX3uqPx+9rH8+dc385njj3bRMfGc6ds7evTicz4Oyfb77df0i/v+kYeHY8n+hMwJxH54PyXYdi213rZ9udG9bAcSRaD/uy7Z6/GQ7XbHJ4zg7P+jhM0TllsH9pOJkB54Y0exox5WzyYs9Pn+A/zlBjr0Ox7a74s+3OdLp4xXh+jnuGb/eWm4EwDScz4NyX9/9+OnGWFPvCdOIMKfbjjCdeZEp/N3cc0octNvdP8TAa2+5qP9vuxRLpMJs4m56DOd287bgzpXFbTwlMGNTIVTfpmhjOh53/AqfhjDF3NtEQT24SzDSlIwE5n0Stq1Bsu+v9bLszHY6P84mbUg7Pmx4/uUld2JByeBZJmBvS/sZvf/UxbXezibOB0G/YdmM6XsNTBkSn9C5fH8/NOfr6nD7Rg2lsu+sVbLt7qvMz/8p0MgPODoL044wpvniTm48xHVfwzZIGDCdebC6dMzoC6OWSxIzpWL3HNDM1D6nljvLqf+4ox3PMLucWaWo+s2hyjhdwyqLJmI5W9smYZtHk168+LkDcfdPcfFz9z6LJf/9suyv/bLtjL8Y5ZdsdV/h3NnsxnptN0akX46RiTnfGdBR4v3z0ipvcUY5pNnKfu7nLnM4n7twKIl+BYttd8WfbnVsa72WYucnEuaXxXoWZG8ydc+luOdJ4TpMqGlEcyXanQRtOKqZ055RIkwHFhN7l7NJ4z+gTPbTGtrvyz7ZbysJkRtl2K1mYjGgvxvOp3ryKihll252VhckVqRhzV/1jzC1lYTKjMeZWC+Q9pb0Yj1OKm1GsZGEyoljKwmRGsZSFyYximZ2PIWXbnU131tUott2Vf7bdUhYmD/ey7VayMBlRDs9KFiYjymBfycJkRMdAukqkyYyy7c4m0uQaKdvu4WAOz0psIiPK4VmJTWRE+xsvxCYypFiITWRIcRKbyJRiLTaRIWXbTehmOVLDJSa1x8V9VryIgO4HyoY7xbYbL4w32+7hYF7sShYmI8qLXavhaEL7G69kYTKieYRYysJkRiNXrWRhMqURlsc0iyYrWZjMKC/2rCxMHjiLMXflP8bcSmwiI8rhWYlNZEiZAQt9Oo9oL8aV2ERGFEuxiYzpKPDGNB+jK7GJzCiHZyk2kQd2Y8zN2v9BtLsZY26qcOkYc0O3uVs7l7oGmhNrnz493E/FhXmxy/mZDyeWWaNcycJkxnAs4WWjbKxkYTKiWMrCZEaxkIXJnD3s0jgtDv2QYiELk0HDhXmxp4S3TGqPi3uJuENsuwxXjLmnTy9i7KTuTC7GrG/UqOIurBPcnOFOrBPciPZiXMrCZEaxkoXJiDIDVrIwGTPcidx83EPEnciiyTVMtt3hcBG23T1IZsA95BhzK1mYjGiMuZUsTEa0F+NKbCL3TLGShcmI8mKXsjCZ0c1CFiaDdpcLzyduIQuTSe0bdQ8R94ZjzD0EjOUKwS1jzE0nVmslMKUx5k7R5ZaaMBlOLFcIbqU0keHEcoXgVhjOUQssVwhupQmT4cRyoIarUQsMJ1Yj318+0XWpGHNX/tl2S02YDCnbbqEJkwH99tLTmCqPWruYT6zWxXtEsVwX7yWmc9QCy3XxnlEspic2bbg02+68JkwetGLbXa1g291PHbXAhWPMLTVhMma4dIy5m9XxntMYc8vHjWiMuZUmTCY0xtxSEyZDyrZbasJkRtl2S02YDCnbbkZznfVw2nziHuKYT9w95BhzS02YjNnIKu8hs+1WmjCZULbdShMmMxpjbqUJkxFl262yaDKjbLtJy6LJldv5xD0EjGV0uZV6U2aUbbdUb8qMsu2W6k0ZUbbdSr0pE8q2W6s3ZUTnE7dWb8pk4mx0uQHdrFa0ZomrUjHmrv2z7VaaMJlRtt1CEyZDOp+4oyZMBg0XZtstNWEynViMqXKtCZMpjTF3zKLJjMaYW2nCZEZjzJ3XhMmDVmy7qxVsu/upoxa4cIy5o3pT5nQ+cUv1psxojLmlelNGNMbcUr0pIxpjbqHelCll263UmzKibLuVelNmlG13Xr0pV6LmE3ftfz5xM6oJk9X/8oClJkxmlG231ITJiM4nbqUJkwmdT9xaEyYjGmNu2DRhcuGRVa40YTKjbLtJ04TJFbL5xF39X320G6WJjGluPhZKE5nR3HyslSYyoZGrzmT8YkBnKTZtmNTcfExq36iZhyRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJ0h1i2w0YLsK2m9TNw8G82KUmTIaUF7vUhMmMziduqTSRKcOlR1Y5a7gsL3atCZMRjTE3bJowufDqeK80YTKj84lbaMLkQdeRVT4EHWNuOPtGLTOwv4wxN2a4GzHmpmwz4EoTWWVgf6lfj+FkBqwysD+hWGdgf6k0kdFkBpyJLre8y3Sy7ZbR5RZPNKk9Lu634unTp0+fPn16KstE2XCnYsy9CGbKhrvBthvMUQvce8RN3NZJxYV5sUtNmIwZ7oQmTMZs5w5owmQ+sVohuBHFaoXgJnSzXiG4WcOFebHDhkvzYpeaMLmGOZ+4C42s8h4kM+AeMttuqQmTMWPb3Y3V8Z4ytt3dWB3vGWXbLTRhMqNsu5UmTKZstLKXZtsdNWEyaBm/uDTb7kYTJpO2BieXZtstc501qT0u7oXi/7zYdlf+2XZLTZiMKttuyvQ/eSfYdmOGS7PtlpowmTJcmG231ITJkMaYW2rCZEZjzC3z3TKjMeYmLd8t/8+fbXe1gm13TT21wGbabnHCpLKcwwmTyjrmzuGESaMdc9MJk0Q75hYnTBKl7b4uTpgUStstpok0StuN3LrSdne/9wR3Qe6YW5wwqaxj7hxOmFRG253DCZNGabvhhEmjJ6tcnDCptGPuve+WSDvmphMmjdJ2pTlhcp83T9zD/8kqFydMKqPtzuGESWW03X4nTDql7aYTJonSdosTJo3OEzecMMls4xe7abu3EyahvdhN200nTB6lOuYe/2m71uYzP4cTJpXNE3cOJ0zqzJwk7nDCpLPdfGzumFucMGm0Y25xwiTRk1VOJ0wa7ZgrzQmTT/603WMFbVfqqQUuyzd6l1nH3DnsTWm0Y27am5LoySqnvSmN0naR7ubj8X+LJrdb88RdkE9WuThhUlnH3DmcMKmMtjuHEyaNnqxyJlHabnHCpNGOucMJk0p3RzmdMGl0nrjSnDC5cswT9+g/T9zcReO0jSHPzF00NtpcNXfROJ0wqTNzF43TNJE4c+yiMdKszxO2X4YTJn0+ivH1Yv2SRLP8oMpS6mOjmg8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMCJaLvAsoW2K/XFjTAXO5wwiZSLPZww6XP2qXlXAm/XLgLNcVcCkea4K4EP0iYX+8Hz2DS1bKftOs3ihMmd68kqb6A75jL7PxF3d8wN00Qyy+6OuUbv3Hq9d7RCpxSb947WmmkiuxmewzSRTBmewzSRSMmAwzSRSBOsaSKX1nxo0H1Rf8Op/J/8jTT1N5yCtivz1AKXx7x6W0vNbi52OGGSWc7BxVaWU3CxmWU3FzudMKksu7nY4YRJZh/e3jE3nDCp7Nt203ZjiyaNZtmiyRPmPHGbTlZ5gSQDrsi03XTCpFHabjph0ihtN50waZS2m06YNErbTSdMKnsU42ba7vufpxMmkWUzw7OaJhJqSn3ExSU0/3fRdo//tN10wqRR2m46YdLoGUjfTpiElt203dsJkz5PAL040DWdMKm0Y+6975ZIO+amEyaJJjUnTD7503aPFbTdNfXUArs75l5OmHQ6+d90wqTRjrnphEmjHXPDCZNIO+beTpiERttt3/LmcMKkUYZnOmGSKG03nTC5daXt7n7vCe6C3DG3TFLf6MkqpxMmjdJ2wwmTSGm76YRJo/PETSdMIu2YG06YNMrwHE6YRJrUnDC5z5sn7vl9nrhz3OhdZbTdKW70LtKOuZcTJp1u0eRwwqTSLZpMJ0wqmydue8fc2M1HZdm+RZPUco4tmjxOdcw9+tN2wwmTSGm76YRJo/PEvUwTKe1RjHtPVllbdtN20wmTSDvm3k6YVLo7yumESaLzxKXmhMknf9rusYK2uwyfWmD8I+7cn8nomOsz47CGjXbMzf2ZvOxNKXSiork/k+mESZ3fNvdn0mjmx17vFLpFk7k/k0a/ZO7PpLQfdIM3T9xj/Dxxu2m74YRJnVlW5zedMGmUtpuuXSRK20WauTXKRjP+p4lIM7dGOdMobVeaEyYPt/PE3cpmf8dcaVsJ290x1+jteK93JVDoPHHzrgSGvSmR0nbD3pTMHsW4nbZ72ZsS2sYvdtN2L3tTSruDk9203dx11rNUx9zTP203nDBJlbar7Aykp6DtMstu2m46YVJZdtN2wwmTSjvmhhMmjXbMzS2aNNoxd5u1RZPHCtrumnpqgd203XTCpM2s51+aTpg02jE3nTBptGNuOmHSaMfcdMIkUdru63JH3pGerLLQF/NevCPNvdo8cY//88Tl6YTJ71DhqFHabjph0ihtN5wwifRkldMJk0o75jrdosl0wqRR2q40J0xumeeJuxE+r+E0TaRRhmeaJtIow/MyTaRThmeaJtIowzNNE4l0I43DNJFGpxSbpolUlt0MzzRNpLKU+tio6PPhs6UspL/hnM/rt7zyd0DbxfXX3spmNxc75zNPMx+0y00nTMrMR+1ywwmTOt9Z2uWGEyaZZXfH3HDCJLNs75h7O2HSWXafrPJwwqSzF7u52MMJk1IfcXFFzF++Yy6VYrq2abtfAQA=
+[benchmark400]: data:image/png;base64,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
+[benchmark2560]: data:image/png;base64,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
+[benchmark10240]: data:image/png;base64,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

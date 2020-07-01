@@ -237,41 +237,6 @@ namespace v2 //cuda 预处理log到shared memory
 namespace v3 //cuda 预处理log到constant memory
 {
     static __constant__ double mylog[26];
-    static struct InitPlogp
-    {
-        InitPlogp()
-        {
-            const double mylog_h[26] = {
-                0.0,
-                log(1.0),
-                log(2.0),
-                log(3.0),
-                log(4.0),
-                log(5.0),
-                log(6.0),
-                log(7.0),
-                log(8.0),
-                log(9.0),
-                log(10.0),
-                log(11.0),
-                log(12.0),
-                log(13.0),
-                log(14.0),
-                log(15.0),
-                log(16.0),
-                log(17.0),
-                log(18.0),
-                log(19.0),
-                log(20.0),
-                log(21.0),
-                log(22.0),
-                log(23.0),
-                log(24.0),
-                log(25.0)};
-            cudaMemcpyToSymbol(mylog, mylog_h, sizeof(double) * 26);
-        }
-    } tmpInit;
-
     static __global__ void cudaCallbackKernel(
         const int width,
         const int height,
@@ -309,7 +274,34 @@ namespace v3 //cuda 预处理log到constant memory
         float **result)
     {
         float *input_d, *output_d;
-
+        const double mylog_h[26] = {
+            0.0,
+            log(1.0),
+            log(2.0),
+            log(3.0),
+            log(4.0),
+            log(5.0),
+            log(6.0),
+            log(7.0),
+            log(8.0),
+            log(9.0),
+            log(10.0),
+            log(11.0),
+            log(12.0),
+            log(13.0),
+            log(14.0),
+            log(15.0),
+            log(16.0),
+            log(17.0),
+            log(18.0),
+            log(19.0),
+            log(20.0),
+            log(21.0),
+            log(22.0),
+            log(23.0),
+            log(24.0),
+            log(25.0)};
+        CHECK(cudaMemcpyToSymbol(mylog, &mylog_h[0], sizeof(double) * 26));
         CHECK(cudaMalloc((void **)&input_d, sizeof(float) * width * height));
         CHECK(cudaMalloc((void **)&output_d, sizeof(float) * width * height));
         CHECK(cudaMemcpy(input_d, sample, sizeof(float) * width * height, cudaMemcpyHostToDevice));
@@ -338,42 +330,7 @@ namespace v3 //cuda 预处理log到constant memory
 } // namespace v3
 namespace v4 //cuda 预处理log到device memory
 {
-    static __device__ double mylog[26];
-    static struct InitPlogp
-    {
-        InitPlogp()
-        {
-            const double mylog_h[26] = {
-                0.0,
-                log(1.0),
-                log(2.0),
-                log(3.0),
-                log(4.0),
-                log(5.0),
-                log(6.0),
-                log(7.0),
-                log(8.0),
-                log(9.0),
-                log(10.0),
-                log(11.0),
-                log(12.0),
-                log(13.0),
-                log(14.0),
-                log(15.0),
-                log(16.0),
-                log(17.0),
-                log(18.0),
-                log(19.0),
-                log(20.0),
-                log(21.0),
-                log(22.0),
-                log(23.0),
-                log(24.0),
-                log(25.0)};
-            cudaMemcpyToSymbol(mylog, mylog_h, sizeof(double) * 26);
-        }
-    } tmpInit;
-
+    static __constant__ double mylog[26];
     static __global__ void cudaCallbackKernel(
         const int width,
         const int height,
@@ -411,7 +368,34 @@ namespace v4 //cuda 预处理log到device memory
         float **result)
     {
         float *input_d, *output_d;
-
+        const double mylog_h[26] = {
+            0.0,
+            log(1.0),
+            log(2.0),
+            log(3.0),
+            log(4.0),
+            log(5.0),
+            log(6.0),
+            log(7.0),
+            log(8.0),
+            log(9.0),
+            log(10.0),
+            log(11.0),
+            log(12.0),
+            log(13.0),
+            log(14.0),
+            log(15.0),
+            log(16.0),
+            log(17.0),
+            log(18.0),
+            log(19.0),
+            log(20.0),
+            log(21.0),
+            log(22.0),
+            log(23.0),
+            log(24.0),
+            log(25.0)};
+        CHECK(cudaMemcpyToSymbol(mylog, mylog_h, sizeof(double) * 26));
         CHECK(cudaMalloc((void **)&input_d, sizeof(float) * width * height));
         CHECK(cudaMalloc((void **)&output_d, sizeof(float) * width * height));
         CHECK(cudaMemcpy(input_d, sample, sizeof(float) * width * height, cudaMemcpyHostToDevice));
@@ -442,43 +426,6 @@ namespace v5 //cuda 预处理log到texure memory
 {
     static texture<float> mylog_tex;
     static __device__ float mylog[26];
-    static struct InitPlogp
-    {
-        InitPlogp()
-        {
-            float mylog_h[26] = {
-                0.0,
-                log(1.0),
-                log(2.0),
-                log(3.0),
-                log(4.0),
-                log(5.0),
-                log(6.0),
-                log(7.0),
-                log(8.0),
-                log(9.0),
-                log(10.0),
-                log(11.0),
-                log(12.0),
-                log(13.0),
-                log(14.0),
-                log(15.0),
-                log(16.0),
-                log(17.0),
-                log(18.0),
-                log(19.0),
-                log(20.0),
-                log(21.0),
-                log(22.0),
-                log(23.0),
-                log(24.0),
-                log(25.0)},
-                  *mylog_d;
-            cudaMemcpyToSymbol(mylog, mylog_h, sizeof(float) * 26);
-            cudaGetSymbolAddress((void **)&mylog_d, mylog);
-            cudaBindTexture(0, mylog_tex, mylog_d);
-        }
-    } tmpInit;
 
     static __global__ void cudaCallbackKernel(
         const int width,
@@ -518,6 +465,37 @@ namespace v5 //cuda 预处理log到texure memory
     {
         float *input_d, *output_d;
 
+        float mylog_h[26] = {
+            0.0,
+            log(1.0),
+            log(2.0),
+            log(3.0),
+            log(4.0),
+            log(5.0),
+            log(6.0),
+            log(7.0),
+            log(8.0),
+            log(9.0),
+            log(10.0),
+            log(11.0),
+            log(12.0),
+            log(13.0),
+            log(14.0),
+            log(15.0),
+            log(16.0),
+            log(17.0),
+            log(18.0),
+            log(19.0),
+            log(20.0),
+            log(21.0),
+            log(22.0),
+            log(23.0),
+            log(24.0),
+            log(25.0)},
+              *mylog_d;
+        cudaMemcpyToSymbol(mylog, mylog_h, sizeof(float) * 26);
+        cudaGetSymbolAddress((void **)&mylog_d, mylog);
+        cudaBindTexture(0, mylog_tex, mylog_d);
         CHECK(cudaMalloc((void **)&input_d, sizeof(float) * width * height));
         CHECK(cudaMalloc((void **)&output_d, sizeof(float) * width * height));
         CHECK(cudaMemcpy(input_d, sample, sizeof(float) * width * height, cudaMemcpyHostToDevice));
@@ -734,9 +712,8 @@ namespace v7 //cuda 预处理log到寄存器+使用更小的整型类型+使用�
 } // namespace v7
 namespace v8 //cuda 预处理log到寄存器+使用更小的整型类型+使用更小的浮点类型+使用texure memory优化读入
 {
-    static texture<float, 2> input_tex;
-
     static __global__ void cudaCallbackKernel(
+        cudaTextureObject_t texObj,
         const int width,
         const int height,
         float *__restrict__ output)
@@ -754,7 +731,7 @@ namespace v8 //cuda 预处理log到寄存器+使用更小的整型类型+使用�
                     {
                         const int px = idx + offsetx;
                         if (0 <= px && px < width)
-                            ++cnt[(signed char)tex2D(input_tex, px, py)];
+                            ++cnt[(signed char)tex2D<float>(texObj, px, py)];
                     }
             }
             const float mylog[26] = {
@@ -802,11 +779,25 @@ namespace v8 //cuda 预处理log到寄存器+使用更小的整型类型+使用�
         float *output_d;
 
         CHECK(cudaMalloc((void **)&output_d, sizeof(float) * width * height));
-        cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc<float>();
         cudaArray *cuArray;
+        cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc<float>();
         CHECK(cudaMallocArray(&cuArray, &channelDesc, width, height));
-        CHECK(cudaMemcpyToArray(cuArray, 0, 0, sample, sizeof(float) * width * height, cudaMemcpyHostToDevice));
-        CHECK(cudaBindTextureToArray(input_tex, cuArray));
+        CHECK(cudaMemcpy2DToArray(cuArray, 0, 0, sample, sizeof(float) * width, sizeof(float) * width, height, cudaMemcpyHostToDevice));
+
+        // Specify texture
+        struct cudaResourceDesc resDesc;
+        memset(&resDesc, 0, sizeof(resDesc));
+        resDesc.resType = cudaResourceTypeArray;
+        resDesc.res.array.array = cuArray;
+
+        // Specify texture object parameters
+        struct cudaTextureDesc texDesc;
+        memset(&texDesc, 0, sizeof(texDesc));
+        texDesc.readMode = cudaReadModeElementType;
+
+        // Create texture object
+        cudaTextureObject_t texObj = 0;
+        CHECK(cudaCreateTextureObject(&texObj, &resDesc, &texDesc, NULL));
 
         const int
             BLOCK_DIM_X = 32,
@@ -819,12 +810,14 @@ namespace v8 //cuda 预处理log到寄存器+使用更小的整型类型+使用�
         cudaCallbackKernel<<<
             gridDim,
             blockDim>>>(
+            texObj,
             width,
             height,
             output_d);
 
         *result = (float *)malloc(sizeof(float) * width * height);
-        CHECK(cudaMemcpy(*result, output_d, sizeof(float) * width * height, cudaMemcpyDeviceToHost));
+        CHECK(cudaMemcpy(*result, output_d, sizeof(float) * width * height, cudaMemcpyDeviceToHost))
+        CHECK(cudaDestroyTextureObject(texObj));
         CHECK(cudaFreeArray(cuArray));
         CHECK(cudaFree(output_d));
     }
@@ -842,7 +835,7 @@ namespace v9 //cuda 预处理log到寄存器+使用更小的整型类型+使用�
     {
         const int idy = blockIdx.y * (BLOCK_DIM_Y - 4) + threadIdx.y - 2;
         const int idx = blockIdx.x * (BLOCK_DIM_X - 4) + threadIdx.x - 2;
-        __shared__ int input_s[BLOCK_DIM_Y][BLOCK_DIM_X | 1];
+        __shared__ char input_s[BLOCK_DIM_Y][BLOCK_DIM_X | 1];
 
         input_s[threadIdx.y][threadIdx.x] = 0 <= idy && idy < height && 0 <= idx && idx < width ? input[idy * width + idx] : 16;
 
@@ -1151,7 +1144,7 @@ namespace v13 //openmp 预处理log到寄存器+使用更小的类型+预处理�
             free(sum[i]);
     }
 } // namespace v13
-namespace v14 //cuda+openmp 多卡，基于v7、v9、v11
+namespace v14 //cuda+openmp 多卡，基于v7、v12
 {
     static void cudaCallback(
         int width,
@@ -1163,9 +1156,9 @@ namespace v14 //cuda+openmp 多卡，基于v7、v9、v11
         CHECK(cudaGetDeviceCount(&num_gpus));
         if (num_gpus > height - 4)
             num_gpus = height - 4;
-        if (num_gpus < 1)
-            return v11::cudaCallback(width, height, sample, result);
-        if (num_gpus < 2 || width * height < 1e5)
+        if (num_gpus < 1 || width * height < (80 * 2048)) //单张V100有80个SM，每个SM最多2048个常驻线程
+            return v12::cudaCallback(width, height, sample, result);
+        if (num_gpus < 2)
             return v7::cudaCallback(width, height, sample, result);
         *result = (float *)malloc(sizeof(float) * width * height);
 #pragma omp parallel num_threads(num_gpus)
@@ -1177,7 +1170,7 @@ namespace v14 //cuda+openmp 多卡，基于v7、v9、v11
                 thread_hgt = height - 2 - thread_beg;
             float *thread_result;
             CHECK(cudaSetDevice(thread_num));
-            v9::cudaCallback(
+            v7::cudaCallback(
                 width,
                 thread_hgt + 4,
                 sample + width * (thread_beg - 2),
@@ -1197,14 +1190,6 @@ namespace v14 //cuda+openmp 多卡，基于v7、v9、v11
         }
     }
 } // namespace v14
-void cudaCallback(
-    int width,
-    int height,
-    float *sample,
-    float **result)
-{
-    v14::cudaCallback(width, height, sample, result);
-}
 struct WarmUP
 {
     WarmUP(int W, int H)
@@ -1225,9 +1210,13 @@ struct WarmUP
             v12::cudaCallback,
             v13::cudaCallback};
         float *sample = (float *)malloc(sizeof(float) * W * H);
-#pragma omp parallel for
-        for (int i = 0; i < W * H; ++i)
-            sample[i] = rand() & 15;
+#pragma omp parallel
+        {
+            unsigned seed = omp_get_thread_num();
+#pragma omp for
+            for (int i = 0; i < W * H; ++i)
+                sample[i] = rand_r(&seed) & 15;
+        }
         for (int i = 0; i < sizeof(cudaCallback) / sizeof(cudaCallback[0]); ++i)
         {
             int num_gpus = 0;
@@ -1265,9 +1254,13 @@ struct Benchmark
             v13::cudaCallback,
             v14::cudaCallback};
         float *sample = (float *)malloc(sizeof(float) * W * H);
-#pragma omp parallel for
-        for (int i = 0; i < W * H; ++i)
-            sample[i] = rand() & 15;
+#pragma omp parallel
+        {
+            unsigned seed = omp_get_thread_num();
+#pragma omp for
+            for (int i = 0; i < W * H; ++i)
+                sample[i] = rand_r(&seed) & 15;
+        }
         printf("\n\nStart benchmark with matrix size %d * %d:\n\n", W, H);
         for (int i = 0; i < sizeof(cudaCallback) / sizeof(cudaCallback[0]); ++i)
         {
@@ -1293,4 +1286,15 @@ struct Benchmark
     }
 };
 static WarmUP warm_up(1, 1);
-static Benchmark benchmark(1024, 1024);
+static Benchmark
+    benchmark400(400, 400),
+    benchmark2560(2560, 2560),
+    benchmark10240(10240, 10240);
+void cudaCallback(
+    int width,
+    int height,
+    float *sample,
+    float **result)
+{
+    v14::cudaCallback(width, height, sample, result);
+}

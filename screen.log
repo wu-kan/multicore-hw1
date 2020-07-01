@@ -1,52 +1,124 @@
 -- The C compiler identification is GNU 4.8.5
 -- The CXX compiler identification is GNU 4.8.5
--- Check for working C compiler: /bin/cc
--- Check for working C compiler: /bin/cc -- works
+-- Check for working C compiler: /usr/bin/cc
+-- Check for working C compiler: /usr/bin/cc -- works
 -- Detecting C compiler ABI info
 -- Detecting C compiler ABI info - done
--- Check for working CXX compiler: /bin/c++
--- Check for working CXX compiler: /bin/c++ -- works
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Check for working CXX compiler: /usr/bin/c++
+-- Check for working CXX compiler: /usr/bin/c++ -- works
 -- Detecting CXX compiler ABI info
 -- Detecting CXX compiler ABI info - done
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+CMake Warning (dev) at CMakeLists.txt:2 (find_package):
+  Policy CMP0074 is not set: find_package uses <PackageName>_ROOT variables.
+  Run "cmake --help-policy CMP0074" for policy details.  Use the cmake_policy
+  command to set the policy and suppress this warning.
+
+  Environment variable CUDA_ROOT is set to:
+
+    /GPUFS/app_GPU/compiler/CUDA/10.1.2
+
+  For compatibility, CMake is ignoring the variable.
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- Looking for pthread.h
+-- Looking for pthread.h - found
+-- Looking for pthread_create
+-- Looking for pthread_create - not found
+-- Looking for pthread_create in pthreads
+-- Looking for pthread_create in pthreads - not found
+-- Looking for pthread_create in pthread
+-- Looking for pthread_create in pthread - found
+-- Found Threads: TRUE  
 -- Configuring done
 -- Generating done
--- Build files have been written to: /public/home/st17341163/multicore-hw1-scaffold/sources/bin
-[ 33%] Building NVCC (Device) object CMakeFiles/main.dir/src/./main_generated_main.cu.o
-/public/home/st17341163/multicore-hw1-scaffold/sources/src/config.h(14): warning: conversion from a string literal to "char *" is deprecated
+-- Build files have been written to: /GPUFS/sysu_hpcedu_302/asc20/WuK/multicore-hw1-scaffold/sources/bin
+[ 25%] Building NVCC (Device) object CMakeFiles/main.dir/src/main_generated_main.cu.o
+/GPUFS/sysu_hpcedu_302/asc20/WuK/multicore-hw1-scaffold/sources/src/config.h(14): warning: conversion from a string literal to "char *" is deprecated
 
-/public/home/st17341163/multicore-hw1-scaffold/sources/src/config.h(16): warning: conversion from a string literal to "char *" is deprecated
+/GPUFS/sysu_hpcedu_302/asc20/WuK/multicore-hw1-scaffold/sources/src/config.h(16): warning: conversion from a string literal to "char *" is deprecated
 
-/public/home/st17341163/multicore-hw1-scaffold/sources/src/config.h(14): warning: conversion from a string literal to "char *" is deprecated
+/GPUFS/sysu_hpcedu_302/asc20/WuK/multicore-hw1-scaffold/sources/src/config.h(14): warning: conversion from a string literal to "char *" is deprecated
 
-/public/home/st17341163/multicore-hw1-scaffold/sources/src/config.h(16): warning: conversion from a string literal to "char *" is deprecated
+/GPUFS/sysu_hpcedu_302/asc20/WuK/multicore-hw1-scaffold/sources/src/config.h(16): warning: conversion from a string literal to "char *" is deprecated
 
-[ 66%] Building NVCC (Device) object CMakeFiles/main.dir/src/./main_generated_core.cu.o
-/public/home/st17341163/multicore-hw1-scaffold/sources/src/core.cu(38): warning: function "v0::cudaCallback" was declared but never referenced
-
-/public/home/st17341163/multicore-hw1-scaffold/sources/src/core.cu(132): warning: function "v1::cudaCallback" was declared but never referenced
-
-/public/home/st17341163/multicore-hw1-scaffold/sources/src/core.cu(203): warning: function "v2::cudaCallback" was declared but never referenced
-
-/public/home/st17341163/multicore-hw1-scaffold/sources/src/core.cu(305): warning: function "v3::cudaCallback" was declared but never referenced
-
-/public/home/st17341163/multicore-hw1-scaffold/sources/src/core.cu(407): warning: function "v4::cudaCallback" was declared but never referenced
-
-/public/home/st17341163/multicore-hw1-scaffold/sources/src/core.cu(513): warning: function "v5::cudaCallback" was declared but never referenced
-
-/public/home/st17341163/multicore-hw1-scaffold/sources/src/core.cu(607): warning: function "v6::cudaCallback" was declared but never referenced
-
-/public/home/st17341163/multicore-hw1-scaffold/sources/src/core.cu(796): warning: function "v8::cudaCallback" was declared but never referenced
-
-/public/home/st17341163/multicore-hw1-scaffold/sources/src/core.cu(934): warning: function "v10::cudaCallback" was declared but never referenced
-
-/public/home/st17341163/multicore-hw1-scaffold/sources/src/core.cu(1023): warning: function "v12::cudaCallback" was declared but never referenced
-
-/public/home/st17341163/multicore-hw1-scaffold/sources/src/core.cu(1081): warning: function "v13::cudaCallback" was declared but never referenced
-
+[ 50%] Building NVCC (Device) object CMakeFiles/main.dir/src/main_generated_core.cu.o
 Scanning dependencies of target main
-[100%] Building CXX object CMakeFiles/main.dir/src/samples.cpp.o
-Linking CXX executable main
+[ 75%] Building CXX object CMakeFiles/main.dir/src/samples.cpp.o
+[100%] Linking CXX executable main
 [100%] Built target main
+
+
+Start benchmark with matrix size 640 * 640:
+
+Version 0: 4.292960ms
+Version 1: 4.708352ms
+Version 2: 3.796704ms
+Version 3: 3.714496ms
+Version 4: 3.548896ms
+Version 5: 3.276384ms
+Version 6: 2.763712ms
+Version 7: 2.552288ms
+Version 8: 2.426016ms
+Version 9: 2.561056ms
+Version 10: 9.266080ms
+Version 11: 1.995008ms
+Version 12: 1.709536ms
+Version 13: 7.093696ms
+Version 14: 1.636960ms
+
+
+Finish benchmark with matrix size 640 * 640.
+
+
+
+Start benchmark with matrix size 2560 * 2560:
+
+Version 0: 31.354719ms
+Version 1: 41.344097ms
+Version 2: 29.511265ms
+Version 3: 28.757376ms
+Version 4: 29.387968ms
+Version 5: 27.691393ms
+Version 6: 17.299105ms
+Version 7: 15.259968ms
+Version 8: 15.150208ms
+Version 9: 16.476641ms
+Version 10: 130.554169ms
+Version 11: 24.977760ms
+Version 12: 18.499392ms
+Version 13: 98.223297ms
+Version 14: 10.473536ms
+
+
+Finish benchmark with matrix size 2560 * 2560.
+
+
+
+Start benchmark with matrix size 10240 * 10240:
+
+Version 0: 473.793365ms
+Version 1: 733.725342ms
+Version 2: 549.282898ms
+Version 3: 530.392090ms
+Version 4: 532.152283ms
+Version 5: 508.423401ms
+Version 6: 331.066833ms
+Version 7: 297.580750ms
+Version 8: 296.813080ms
+Version 9: 323.676361ms
+Version 10: 1887.637573ms
+Version 11: 316.286682ms
+Version 12: 258.574951ms
+Version 13: 1148.376221ms
+Version 14: 139.679169ms
+
+
+Finish benchmark with matrix size 10240 * 10240.
+
 sample:
  7.00000  6.00000  9.00000  3.00000  1.00000 
 15.00000 10.00000 12.00000  9.00000 13.00000 
@@ -59,7 +131,7 @@ result:
  2.15353  2.41505  2.51159  2.77526  2.71847 
  2.33837  2.62300  2.75433  2.94162  2.85710 
  2.25386  2.47996  2.62300  2.78779  2.68595 
-cudaCallback: 35.687 ms
+cudaCallback: 0.690 ms
 
 sample:
 10.00000 14.00000  3.00000  3.00000 15.00000 
@@ -73,7 +145,7 @@ result:
  2.33837  2.48437  2.56705  2.80978  2.69231 
  2.52321  2.78779  2.83071  2.99707  2.85710 
  2.36938  2.59930  2.78779  2.92642  2.68595 
-cudaCallback: 0.532 ms
+cudaCallback: 7.470 ms
 
 sample:
  4.00000 12.00000  3.00000  6.00000  4.00000 
@@ -87,7 +159,7 @@ result:
  2.53252  2.45614  2.30061  2.65702  2.52752 
  2.80978  2.73340  2.69154  2.92069  2.78779 
  2.69231  2.62300  2.52752  2.78779  2.59930 
-cudaCallback: 0.465 ms
+cudaCallback: 0.026 ms
 
 sample:
  6.00000  2.00000 12.00000  5.00000  9.00000 
@@ -101,7 +173,7 @@ result:
  2.60157  2.54612  2.56705  2.80978  2.78779 
  2.80978  2.83071  2.83071  2.94162  2.85710 
  2.62300  2.64916  2.64916  2.71847  2.59930 
-cudaCallback: 0.462 ms
+cudaCallback: 0.026 ms
 
 sample:
  2.00000  6.00000  9.00000  9.00000 15.00000 
@@ -115,7 +187,7 @@ result:
  2.26886  2.24516  2.43521  2.65702  2.59683 
  2.45614  2.48790  2.62250  2.84431  2.76163 
  2.55368  2.59683  2.64916  2.78779  2.59930 
-cudaCallback: 0.621 ms
+cudaCallback: 0.494 ms
 
 sample:
  1.00000 11.00000 14.00000 12.00000 10.00000 
@@ -129,7 +201,7 @@ result:
  2.51159  2.47707  2.53252  2.83071  2.64916 
  2.69888  2.64343  2.75433  2.99707  2.85710 
  2.55368  2.48437  2.71847  2.92642  2.77259 
-cudaCallback: 0.556 ms
+cudaCallback: 0.109 ms
 
 sample:
  3.00000  8.00000  3.00000  2.00000  1.00000 
@@ -143,7 +215,7 @@ result:
  2.49066  2.45614  2.39335  2.67795  2.55368 
  2.65702  2.64343  2.67795  2.86524  2.78779 
  2.55368  2.59683  2.69231  2.78779  2.59930 
-cudaCallback: 4.113 ms
+cudaCallback: 7.437 ms
 
 sample:
 14.00000 11.00000  6.00000 11.00000 13.00000 
@@ -157,7 +229,7 @@ result:
  2.43521  2.35606  2.24516  2.45337  2.44121 
  2.73340  2.71247  2.63609  2.78885  2.69231 
  2.62300  2.52752  2.52752  2.69231  2.47996 
-cudaCallback: 4.117 ms
+cudaCallback: 8.415 ms
 
 sample:
  1.00000  9.00000  3.00000  3.00000  3.00000 
@@ -171,7 +243,7 @@ result:
  2.21064  2.30061  2.15403  2.50883  2.31611 
  2.51159  2.65702  2.55345  2.77526  2.64916 
  2.41505  2.52752  2.41505  2.62300  2.51266 
-cudaCallback: 19.999 ms
+cudaCallback: 15.044 ms
 
 sample:
  6.00000  5.00000  6.00000  4.00000  5.00000 
@@ -185,7 +257,7 @@ result:
  2.40069  2.34247  2.23157  2.53252  2.50136 
  2.69888  2.65425  2.64343  2.83071  2.69231 
  2.48437  2.45474  2.44121  2.57984  2.47996 
-cudaCallback: 16.205 ms
+cudaCallback: 16.481 ms
 
 sample:
  4.00000  9.00000  5.00000  7.00000  5.00000 
@@ -199,7 +271,7 @@ result:
  2.32431  2.40069  2.39335  2.65702  2.62300 
  2.62250  2.67795  2.67795  2.86524  2.69231 
  2.38889  2.48437  2.62300  2.69231  2.56660 
-cudaCallback: 15.830 ms
+cudaCallback: 13.510 ms
 
 sample:
  6.00000  4.00000 14.00000 14.00000  9.00000 
@@ -213,5 +285,5 @@ result:
  2.43521  2.45614  2.38710  2.58798  2.44121 
  2.62250  2.64343  2.60891  2.75433  2.57984 
  2.43204  2.52752  2.48437  2.59683  2.47996 
-cudaCallback: 14.769 ms
+cudaCallback: 13.429 ms
 
