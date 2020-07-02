@@ -52,7 +52,7 @@ Scanning dependencies of target main
 [100%] Built target main
 
 
-Start benchmark with matrix size 640 * 640:
+Start benchmark with matrix size 400 * 400:
 
 Version 0: 4.292960ms
 Version 1: 4.708352ms
@@ -71,7 +71,7 @@ Version 13: 7.093696ms
 Version 14: 1.636960ms
 
 
-Finish benchmark with matrix size 640 * 640.
+Finish benchmark with matrix size 400 * 400.
 
 
 

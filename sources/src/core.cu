@@ -2,17 +2,17 @@
 
 namespace v0 //cuda baseline
 {
-    static __global__ void cudaCallbackKernel(
-        const int width,
-        const int height,
-        const float *__restrict__ input,
-        float *__restrict__ output)
+    static __global__ void cudaCallbackKernel( //调用的核函数
+        const int width,                       // 输入矩阵宽，下同
+        const int height,                      //输入矩阵高，下同
+        const float *__restrict__ input,       //输入矩阵
+        float *__restrict__ output)            //输出矩阵
     {
-        const int idy = blockIdx.y * blockDim.y + threadIdx.y;
-        const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+        const int idy = blockIdx.y * blockDim.y + threadIdx.y; //该线程对应元素的行坐标
+        const int idx = blockIdx.x * blockDim.x + threadIdx.x; //该线程对应元素的列坐标
         if (idy < height && idx < width)
         {
-            int cnt[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+            int cnt[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; //循环中统计每个元素的出现次数
             for (int offsety = -2; offsety <= 2; ++offsety)
             {
                 const int py = idy + offsety;
@@ -25,9 +25,9 @@ namespace v0 //cuda baseline
                     }
             }
             double
-                n = (min(idx, 2) + 1 + min(width - idx, 2)) * (min(idy, 2) + 1 + min(height - idy, 2)),
+                n = (min(idx, 2) + 1 + min(width - idx, 2)) * (min(idy, 2) + 1 + min(height - idy, 2)), //当前位置邻域的大小
                 n_inv = 1.0 / n,
-                ans = log(n);
+                ans = log(n); //ans = logn - n_i/n*log(n_i)
             for (int i = 0; i < 16; ++i)
                 if (cnt[i])
                     ans -= log((double)cnt[i]) * cnt[i] * n_inv;
@@ -42,9 +42,9 @@ namespace v0 //cuda baseline
         float **result)
     {
         float *input_d, *output_d;
-
-        CHECK(cudaMalloc((void **)&input_d, sizeof(float) * width * height));
+        //接下来在显卡上分配内存空间，并将输入拷贝到显卡上
         CHECK(cudaMalloc((void **)&output_d, sizeof(float) * width * height));
+        CHECK(cudaMalloc((void **)&input_d, sizeof(float) * width * height));
         CHECK(cudaMemcpy(input_d, sample, sizeof(float) * width * height, cudaMemcpyHostToDevice));
 
         const int
@@ -62,7 +62,7 @@ namespace v0 //cuda baseline
             height,
             input_d,
             output_d);
-
+        //将结果写回，并释放显存空间
         *result = (float *)malloc(sizeof(float) * width * height);
         CHECK(cudaMemcpy(*result, output_d, sizeof(float) * width * height, cudaMemcpyDeviceToHost));
         CHECK(cudaFree(input_d));
@@ -94,7 +94,7 @@ namespace v1 //cuda 预处理log到寄存器
                     }
             }
             const double mylog[26] = {
-                0.0,
+                0.0, //log 0设置为0
                 log(1.0),
                 log(2.0),
                 log(3.0),
@@ -119,7 +119,7 @@ namespace v1 //cuda 预处理log到寄存器
                 log(22.0),
                 log(23.0),
                 log(24.0),
-                log(25.0)};
+                log(25.0)}; //预处理对数表到寄存器。此处计算在编译时就已经完成
 
             const int n = (min(idx, 2) + 1 + min(width - idx, 2)) * (min(idy, 2) + 1 + min(height - idy, 2));
             double ans = mylog[n], n_inv = 1.0 / n;
@@ -173,7 +173,7 @@ namespace v2 //cuda 预处理log到shared memory
     {
         const int idy = blockIdx.y * blockDim.y + threadIdx.y;
         const int idx = blockIdx.x * blockDim.x + threadIdx.x;
-
+        //shared memory不允许直接初始化，要在运行的时候由每个线程计算
         __shared__ double mylog[26];
         if (threadIdx.y == 0 && threadIdx.x < 26)
             mylog[threadIdx.x] = threadIdx.x == 0 ? 0.0 : log((double)threadIdx.x);
@@ -300,7 +300,7 @@ namespace v3 //cuda 预处理log到constant memory
             log(22.0),
             log(23.0),
             log(24.0),
-            log(25.0)};
+            log(25.0)}; //计算并将值发送到constant memory
         CHECK(cudaMemcpyToSymbol(mylog, &mylog_h[0], sizeof(double) * 26));
         CHECK(cudaMalloc((void **)&input_d, sizeof(float) * width * height));
         CHECK(cudaMalloc((void **)&output_d, sizeof(float) * width * height));
@@ -330,7 +330,7 @@ namespace v3 //cuda 预处理log到constant memory
 } // namespace v3
 namespace v4 //cuda 预处理log到device memory
 {
-    static __constant__ double mylog[26];
+    static __device__ double mylog[26];
     static __global__ void cudaCallbackKernel(
         const int width,
         const int height,
@@ -425,7 +425,7 @@ namespace v4 //cuda 预处理log到device memory
 namespace v5 //cuda 预处理log到texure memory
 {
     static texture<float> mylog_tex;
-    static __device__ float mylog[26];
+    static __device__ float mylog[26]; //texture只允许4字节的float
 
     static __global__ void cudaCallbackKernel(
         const int width,
@@ -534,7 +534,7 @@ namespace v6 //cuda 预处理log到寄存器+使用更小的整型类型
         const int idx = blockIdx.x * blockDim.x + threadIdx.x;
         if (idy < height && idx < width)
         {
-            signed char cnt[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+            signed char cnt[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; //寄存器类型从int改成char，减少了4倍寄存器压力
             for (signed char offsety = -2; offsety <= 2; ++offsety)
             {
                 const int py = idy + offsety;
@@ -641,7 +641,7 @@ namespace v7 //cuda 预处理log到寄存器+使用更小的整型类型+使用�
                     }
             }
             const float mylog[26] = {
-                0.0,
+                0.0, //对数表改成float，减少两倍内存压力
                 log(1.0),
                 log(2.0),
                 log(3.0),
@@ -713,7 +713,7 @@ namespace v7 //cuda 预处理log到寄存器+使用更小的整型类型+使用�
 namespace v8 //cuda 预处理log到寄存器+使用更小的整型类型+使用更小的浮点类型+使用texure memory优化读入
 {
     static __global__ void cudaCallbackKernel(
-        cudaTextureObject_t texObj,
+        cudaTextureObject_t texObj, //使用纹理对象
         const int width,
         const int height,
         float *__restrict__ output)
@@ -784,18 +784,18 @@ namespace v8 //cuda 预处理log到寄存器+使用更小的整型类型+使用�
         CHECK(cudaMallocArray(&cuArray, &channelDesc, width, height));
         CHECK(cudaMemcpy2DToArray(cuArray, 0, 0, sample, sizeof(float) * width, sizeof(float) * width, height, cudaMemcpyHostToDevice));
 
-        // Specify texture
+        // 绑定纹理到cudaArray上
         struct cudaResourceDesc resDesc;
         memset(&resDesc, 0, sizeof(resDesc));
         resDesc.resType = cudaResourceTypeArray;
         resDesc.res.array.array = cuArray;
 
-        // Specify texture object parameters
+        // 设置纹理为只读
         struct cudaTextureDesc texDesc;
         memset(&texDesc, 0, sizeof(texDesc));
         texDesc.readMode = cudaReadModeElementType;
 
-        // Create texture object
+        // 创建纹理对象
         cudaTextureObject_t texObj = 0;
         CHECK(cudaCreateTextureObject(&texObj, &resDesc, &texDesc, NULL));
 
@@ -835,8 +835,10 @@ namespace v9 //cuda 预处理log到寄存器+使用更小的整型类型+使用�
     {
         const int idy = blockIdx.y * (BLOCK_DIM_Y - 4) + threadIdx.y - 2;
         const int idx = blockIdx.x * (BLOCK_DIM_X - 4) + threadIdx.x - 2;
-        __shared__ char input_s[BLOCK_DIM_Y][BLOCK_DIM_X | 1];
 
+        //读入shared memory
+        __shared__ char input_s[BLOCK_DIM_Y][BLOCK_DIM_X | 1];
+        //溢出的值用16代替
         input_s[threadIdx.y][threadIdx.x] = 0 <= idy && idy < height && 0 <= idx && idx < width ? input[idy * width + idx] : 16;
 
         __syncthreads();
@@ -845,7 +847,7 @@ namespace v9 //cuda 预处理log到寄存器+使用更小的整型类型+使用�
             1 < threadIdx.x && threadIdx.x < BLOCK_DIM_X - 2 &&
             idy < height && idx < width)
         {
-            signed char cnt[17] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+            signed char cnt[17] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; //此处计数器多开一位用于非法值
             for (signed char offsety = -2; offsety <= 2; ++offsety)
                 for (signed char offsetx = -2; offsetx <= 2; ++offsetx)
                     ++cnt[input_s[threadIdx.y + offsety][threadIdx.x + offsetx]];
@@ -931,7 +933,7 @@ namespace v10 //openmp baseline
         float **result)
     {
         *result = (float *)malloc(sizeof(float) * width * height);
-#pragma omp parallel for
+#pragma omp parallel for //每个位置没有循环依赖，可以直接并行
         for (int pos = 0; pos < width * height; ++pos)
         {
             const int
@@ -1002,7 +1004,7 @@ namespace v11 //openmp 预处理log到寄存器
                 log(22.0),
                 log(23.0),
                 log(24.0),
-                log(25.0)};
+                log(25.0)}; //预处理对数表，其值在编译时已求得
             const int n = (min(idx, 2) + 1 + min(width - idx, 2)) * (min(idy, 2) + 1 + min(height - idy, 2));
             double ans = mylog[n], n_inv = 1.0 / n;
             for (int i = 0; i < 16; ++i)
@@ -1079,7 +1081,7 @@ namespace v13 //openmp 预处理log到寄存器+使用更小的类型+预处理�
     {
         *result = (float *)malloc(sizeof(float) * width * height);
         int *sum[16];
-#pragma omp parallel for
+#pragma omp parallel for //此处预处理 X =x_i 对答案的贡献的前缀和
         for (int i = 0; i < 16; ++i)
         {
             int *p = (int *)malloc(sizeof(int) * (width + 5) * (height + 5));
@@ -1091,7 +1093,7 @@ namespace v13 //openmp 预处理log到寄存器+使用更小的类型+预处理�
                     p[pos] = p[(idy - 1) * (width + 5) + idx] + p[idy * (width + 5) + idx - 1] - p[(idy - 1) * (width + 5) + (idx - 1)];
                     const int py = idy - 3, px = idx - 3;
                     if (0 <= py && py < height && 0 <= px && px < width && i == sample[py * width + px])
-                        ++p[pos];
+                        ++p[pos]; //当前位置上的元素是i的话可更新
                 }
                 else
                     p[pos] = 0;
@@ -1135,7 +1137,7 @@ namespace v13 //openmp 预处理log到寄存器+使用更小的类型+预处理�
             double ans = mylog[n], n_inv = 1.0 / n;
             for (signed char i = 0; i < 16; ++i)
             {
-                const signed char cnti = sum[i][(idy + 5) * (width + 5) + idx + 5] - sum[i][(idy + 5) * (width + 5) + idx] - sum[i][idy * (width + 5) + idx + 5] + sum[i][idy * (width + 5) + idx];
+                const signed char cnti = sum[i][(idy + 5) * (width + 5) + idx + 5] - sum[i][(idy + 5) * (width + 5) + idx] - sum[i][idy * (width + 5) + idx + 5] + sum[i][idy * (width + 5) + idx]; //用前缀和公式计算
                 ans -= mylog[cnti] * n_inv * cnti;
             }
             (*result)[pos] = ans;
@@ -1154,23 +1156,23 @@ namespace v14 //cuda+openmp 多卡，基于v7、v12
     {
         int num_gpus = 0;
         CHECK(cudaGetDeviceCount(&num_gpus));
-        if (num_gpus > height - 4)
+        if (num_gpus > height - 4) //显卡远多于可划分数据时适当减少使用的显卡
             num_gpus = height - 4;
-        if (num_gpus < 1 || width * height < (80 * 2048)) //单张V100有80个SM，每个SM最多2048个常驻线程
+        if (num_gpus < 1 || width * height < (80 * 2048)) //单张V100有80个SM，每个SM最多2048个常驻线程，不能满载时直接使用
             return v12::cudaCallback(width, height, sample, result);
-        if (num_gpus < 2)
+        if (num_gpus < 2) //只有一张显卡时直接调用单卡版本减少开销
             return v7::cudaCallback(width, height, sample, result);
         *result = (float *)malloc(sizeof(float) * width * height);
 #pragma omp parallel num_threads(num_gpus)
         {
             int thread_num = omp_get_thread_num(),
-                thread_hgt = (height - 4) / num_gpus,
+                thread_hgt = (height - 4) / num_gpus, //每个线程实际有效的height长度
                 thread_beg = thread_hgt * thread_num + 2;
-            if (thread_num == num_gpus - 1)
+            if (thread_num == num_gpus - 1) //最后一个线程特判，因为不一定整除
                 thread_hgt = height - 2 - thread_beg;
             float *thread_result;
-            CHECK(cudaSetDevice(thread_num));
-            v7::cudaCallback(
+            CHECK(cudaSetDevice(thread_num)); //不同线程指定不同显卡
+            v7::cudaCallback(                 //划分为子问题，分别交给单卡版本
                 width,
                 thread_hgt + 4,
                 sample + width * (thread_beg - 2),
@@ -1178,15 +1180,15 @@ namespace v14 //cuda+openmp 多卡，基于v7、v12
             float
                 *dst = (*result) + width * thread_beg,
                 *src = thread_result + width * 2;
-            if (thread_num == 0)
+            if (thread_num == 0) //0号线程输出的上边界也是有效的
                 dst -= width * 2, src -= width * 2, thread_hgt += 2;
-            if (thread_num == num_gpus - 1)
+            if (thread_num == num_gpus - 1) //最后一个线程的下边界也是有效的
                 thread_hgt += 2;
-            memcpy(
+            memcpy( //将子问题的答案拷贝回原问题
                 dst,
                 src,
                 sizeof(float) * width * thread_hgt);
-            free(thread_result);
+            free(thread_result); //释放子问题的内存空间
         }
     }
 } // namespace v14
@@ -1208,20 +1210,20 @@ struct WarmUP
             v10::cudaCallback,
             v11::cudaCallback,
             v12::cudaCallback,
-            v13::cudaCallback};
+            v13::cudaCallback}; //由于多卡版本是调用单卡版本实现的，因此无需热身
         float *sample = (float *)malloc(sizeof(float) * W * H);
 #pragma omp parallel
         {
-            unsigned seed = omp_get_thread_num();
+            unsigned seed = omp_get_thread_num(); //每个线程使用不同的随机数种子
 #pragma omp for
             for (int i = 0; i < W * H; ++i)
-                sample[i] = rand_r(&seed) & 15;
+                sample[i] = rand_r(&seed) & 15; //使用线程安全的随机数函数
         }
         for (int i = 0; i < sizeof(cudaCallback) / sizeof(cudaCallback[0]); ++i)
         {
             int num_gpus = 0;
             CHECK(cudaGetDeviceCount(&num_gpus));
-#pragma omp parallel num_threads(num_gpus)
+#pragma omp parallel num_threads(num_gpus) //对于每张显卡都要优化
             {
                 float *result;
                 int thread_num = omp_get_thread_num();
@@ -1261,7 +1263,7 @@ struct Benchmark
             for (int i = 0; i < W * H; ++i)
                 sample[i] = rand_r(&seed) & 15;
         }
-        printf("\n\nStart benchmark with matrix size %d * %d:\n\n", W, H);
+        printf("\n\nStart benchmark with matrix size %d * %d:\n\n", W, H); //开始benchnmark
         for (int i = 0; i < sizeof(cudaCallback) / sizeof(cudaCallback[0]); ++i)
         {
             float *result;
