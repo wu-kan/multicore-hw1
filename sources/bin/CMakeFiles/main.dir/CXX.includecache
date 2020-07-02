@@ -1,4 +1,4 @@
-#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
 
 #IncludeRegexScan: ^.*$
 
@@ -6,11 +6,11 @@
 
 #IncludeRegexTransform: 
 
-/public/home/st17341163/multicore-hw1-scaffold/sources/src/samples.cpp
+/home/jovyan/multicore-hw1-scaffold/sources/src/samples.cpp
 samples.h
-/public/home/st17341163/multicore-hw1-scaffold/sources/src/samples.h
+/home/jovyan/multicore-hw1-scaffold/sources/src/samples.h
 
-/public/home/st17341163/multicore-hw1-scaffold/sources/src/samples.h
+/home/jovyan/multicore-hw1-scaffold/sources/src/samples.h
 stdio.h
 -
 stdlib.h

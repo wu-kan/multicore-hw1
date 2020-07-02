@@ -1,1 +1,1 @@
-/bin/c++   -Ofast -fopenmp    CMakeFiles/main.dir/src/samples.cpp.o CMakeFiles/main.dir/src/./main_generated_core.cu.o CMakeFiles/main.dir/src/./main_generated_main.cu.o  -o main -rdynamic /public/software/cuda10.0/lib64/libcudart.so -Wl,-rpath,/public/software/cuda10.0/lib64 
+/usr/bin/c++  -Ofast -fopenmp  -rdynamic CMakeFiles/main.dir/src/samples.cpp.o CMakeFiles/main.dir/src/main_generated_core.cu.o CMakeFiles/main.dir/src/main_generated_main.cu.o  -o main  /usr/local/cuda/lib64/libcudart_static.a -ldl -lrt -lpthread 
