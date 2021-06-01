@@ -1,4 +1,5 @@
 #include "core.h"
+#include <cuda_fp16.h>
 
 namespace v0 //cuda baseline
 {
@@ -301,7 +302,7 @@ namespace v3 //cuda 预处理log到constant memory
             log(23.0),
             log(24.0),
             log(25.0)}; //计算并将值发送到constant memory
-        CHECK(cudaMemcpyToSymbol(mylog, &mylog_h[0], sizeof(double) * 26));
+        CHECK(cudaMemcpyToSymbol(mylog, (const double *)mylog_h, sizeof(mylog_h)));
         CHECK(cudaMalloc((void **)&input_d, sizeof(float) * width * height));
         CHECK(cudaMalloc((void **)&output_d, sizeof(float) * width * height));
         CHECK(cudaMemcpy(input_d, sample, sizeof(float) * width * height, cudaMemcpyHostToDevice));
@@ -395,7 +396,7 @@ namespace v4 //cuda 预处理log到device memory
             log(23.0),
             log(24.0),
             log(25.0)};
-        CHECK(cudaMemcpyToSymbol(mylog, mylog_h, sizeof(double) * 26));
+        CHECK(cudaMemcpyToSymbol(mylog, (const double *)mylog_h, sizeof(mylog_h)));
         CHECK(cudaMalloc((void **)&input_d, sizeof(float) * width * height));
         CHECK(cudaMalloc((void **)&output_d, sizeof(float) * width * height));
         CHECK(cudaMemcpy(input_d, sample, sizeof(float) * width * height, cudaMemcpyHostToDevice));
@@ -618,17 +619,21 @@ namespace v6 //cuda 预处理log到寄存器+使用更小的整型类型
 } // namespace v6
 namespace v7 //cuda 预处理log到寄存器+使用更小的整型类型+使用更小的浮点类型
 {
-    static __global__ void cudaCallbackKernel(
+    template <int BLOCK_DIM_X>
+    static __global__ __launch_bounds__(BLOCK_DIM_X) void cudaCallbackKernel(
         const int width,
         const int height,
         const float *__restrict__ input,
         float *__restrict__ output)
     {
-        const int idy = blockIdx.y * blockDim.y + threadIdx.y;
-        const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+        const int idy = blockIdx.y;
+        const int idx = blockIdx.x * BLOCK_DIM_X + threadIdx.x;
         if (idy < height && idx < width)
         {
-            signed char cnt[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+            __shared__ signed char cnts[16][BLOCK_DIM_X];
+            signed char *cnt = cnts[0] + threadIdx.x;
+            for (signed char i = 0; i < 16; ++i)
+                cnt[i * BLOCK_DIM_X] = 0;
             for (signed char offsety = -2; offsety <= 2; ++offsety)
             {
                 const int py = idy + offsety;
@@ -637,42 +642,45 @@ namespace v7 //cuda 预处理log到寄存器+使用更小的整型类型+使用�
                     {
                         const int px = idx + offsetx;
                         if (0 <= px && px < width)
-                            ++cnt[(signed char)input[py * width + px]];
+                            ++cnt[(int)input[py * width + px] * BLOCK_DIM_X];
                     }
             }
-            const float mylog[26] = {
-                0.0, //对数表改成float，减少两倍内存压力
-                log(1.0),
-                log(2.0),
-                log(3.0),
-                log(4.0),
-                log(5.0),
-                log(6.0),
-                log(7.0),
-                log(8.0),
-                log(9.0),
-                log(10.0),
-                log(11.0),
-                log(12.0),
-                log(13.0),
-                log(14.0),
-                log(15.0),
-                log(16.0),
-                log(17.0),
-                log(18.0),
-                log(19.0),
-                log(20.0),
-                log(21.0),
-                log(22.0),
-                log(23.0),
-                log(24.0),
-                log(25.0)};
+
+            const float mylog[24] = {
+                2 * log(2.0),
+                3 * log(3.0),
+                4 * log(4.0),
+                5 * log(5.0),
+                6 * log(6.0),
+                7 * log(7.0),
+                8 * log(8.0),
+                9 * log(9.0),
+                10 * log(10.0),
+                11 * log(11.0),
+                12 * log(12.0),
+                13 * log(13.0),
+                14 * log(14.0),
+                15 * log(15.0),
+                16 * log(16.0),
+                17 * log(17.0),
+                18 * log(18.0),
+                19 * log(19.0),
+                20 * log(20.0),
+                21 * log(21.0),
+                22 * log(22.0),
+                23 * log(23.0),
+                24 * log(24.0),
+                25 * log(25.0)};
 
             const signed char n = (min(idx, 2) + 1 + min(width - idx, 2)) * (min(idy, 2) + 1 + min(height - idy, 2));
-            double ans = mylog[n], n_inv = 1.0 / n;
+            double ans = mylog[n - 2];
             for (signed char i = 0; i < 16; ++i)
-                ans -= mylog[cnt[i]] * n_inv * cnt[i];
-            output[idy * width + idx] = ans;
+            {
+                signed char c = cnt[i * BLOCK_DIM_X] - (signed char)2;
+                if (c >= 0)
+                    ans -= mylog[c];
+            }
+            output[idy * width + idx] = ans / n;
         }
     }
 
@@ -689,14 +697,13 @@ namespace v7 //cuda 预处理log到寄存器+使用更小的整型类型+使用�
         CHECK(cudaMemcpy(input_d, sample, sizeof(float) * width * height, cudaMemcpyHostToDevice));
 
         const int
-            BLOCK_DIM_X = 32,
-            BLOCK_DIM_Y = 32;
+            BLOCK_DIM_X = 512;
 
         const dim3
-            blockDim(BLOCK_DIM_X, BLOCK_DIM_Y),
-            gridDim(divup(width, BLOCK_DIM_X), divup(height, BLOCK_DIM_Y));
+            blockDim(BLOCK_DIM_X),
+            gridDim(divup(width, BLOCK_DIM_X), height);
 
-        cudaCallbackKernel<<<
+        cudaCallbackKernel<BLOCK_DIM_X><<<
             gridDim,
             blockDim>>>(
             width,

@@ -1,3 +1,0 @@
-/home/jovyan/multicore-hw1-scaffold/sources/bin/CMakeFiles/rebuild_cache.dir
-/home/jovyan/multicore-hw1-scaffold/sources/bin/CMakeFiles/main.dir
-/home/jovyan/multicore-hw1-scaffold/sources/bin/CMakeFiles/edit_cache.dir

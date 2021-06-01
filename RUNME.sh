@@ -4,18 +4,19 @@
 #SBATCH -N 1
 #SBATCH --exclusive
 
-#module load cmake/3.14.3-gcc-4.8.5
-#module load CUDA/10.1.2
+spack load gcc@7.5.0
+spack load cuda@10.1.243%gcc@7.5.0
 
+rm -fr sources/bin
 mkdir -p sources/bin
 cd sources/bin
-rm -fr *
 
-cmake ..  \
-    -DCMAKE_C_FLAGS="-Ofast -fopenmp" \
-    -DCMAKE_CXX_FLAGS="-Ofast -fopenmp" \
-    -DCUDA_NVCC_FLAGS="-O3 -use_fast_math -Xcompiler -fopenmp"
+cmake .. \
+    -DCMAKE_C_FLAGS=" -Ofast -fopenmp " \
+    -DCMAKE_CXX_FLAGS=" -Ofast -fopenmp " \
+    -DCUDA_NVCC_FLAGS=" -arch=sm_70 -O3 -use_fast_math -Xcompiler -Ofast -Xcompiler -fopenmp "
 make
 
 cd ../..
 sources/bin/main
+rm -fr sources/bin
